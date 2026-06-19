@@ -20,6 +20,8 @@ export interface DeployInfo {
   branch: string;       // Rama desde la que se deployó
   timestamp: string;    // ISO string del momento del deploy
   autor: string;        // Nombre del autor del commit
+  /** Mensaje del commit (se obtiene de GitHub API durante el polling) */
+  message?: string;
 }
 
 /**

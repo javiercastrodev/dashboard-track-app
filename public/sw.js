@@ -30,34 +30,31 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  console.log('SW push event received:', event.data?.text()?.slice(0, 100));
-
-  let data = {};
-
-  if (event.data) {
-    try {
-      data = event.data.json();
-      console.log('SW parsed data:', JSON.stringify(data));
-    } catch {
-      data = { title: 'Notificación', body: event.data.text() };
-    }
-  }
-
-  const title = data.title || '📡 Tracking Dashboard';
+  let title = '📡 Tracking Dashboard';
   const options = {
-    body: data.body || '',
+    body: '',
     icon: '/favicon.svg',
     badge: '/favicon.svg',
-    data: { url: data.url || '/' },
-    tag: data.tag || 'push-default',
+    data: { url: '/' },
+    tag: 'push-default',
     requireInteraction: true,
     silent: false,
   };
 
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      title = data.title || title;
+      options.body = data.body || '';
+      options.data = { url: data.url || '/' };
+      options.tag = data.tag || options.tag;
+    } catch {
+      options.body = event.data.text();
+    }
+  }
+
   event.waitUntil(
     self.registration.showNotification(title, options)
-      .then(() => console.log('SW notification shown successfully'))
-      .catch((err) => console.error('SW showNotification error:', err))
   );
 });
 
@@ -71,18 +68,37 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || '/';
-
   event.waitUntil(
-    clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((windowClients) => {
+    (async () => {
+      try {
+        const base = self.location.origin;
+        const path = (event.notification.data && event.notification.data.url) || '/';
+        const targetUrl = new URL(path, base).href;
+
+        const windowClients = await clients.matchAll({
+          type: 'window',
+          includeUncontrolled: true,
+        });
+
+        // Buscar pestaña abierta en el mismo pathname
         for (const client of windowClients) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
+          try {
+            const clientPath = new URL(client.url).pathname;
+            if (clientPath === new URL(targetUrl).pathname && 'focus' in client) {
+              await client.focus();
+              return;
+            }
+          } catch {
+            continue;
           }
         }
-        return clients.openWindow(urlToOpen);
-      })
+
+        // Si no hay pestaña, abrir una nueva
+        await clients.openWindow(targetUrl);
+      } catch {
+        // Si todo falla, al menos abrir el dashboard
+        await clients.openWindow('/');
+      }
+    })()
   );
 });

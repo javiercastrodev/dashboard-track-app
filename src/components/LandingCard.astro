@@ -128,6 +128,13 @@ const badge = statusBadge(landing.status);
           <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">Autor</span>
           <span class="text-gray-500 dark:text-gray-400">{landing.lastDeploy.autor}</span>
         </div>
+
+        {landing.lastDeploy.message && (
+          <div class="flex items-baseline gap-3 text-sm">
+            <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">Mensaje</span>
+            <span class="text-gray-500 dark:text-gray-400 italic">{landing.lastDeploy.message}</span>
+          </div>
+        )}
       </div>
     ) : (
       <p class="m-0 text-gray-400 dark:text-gray-500 italic text-sm">Sin deploy registrado</p>

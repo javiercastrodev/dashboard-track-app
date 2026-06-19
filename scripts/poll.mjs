@@ -145,9 +145,13 @@ async function main() {
   /** @type {{ landings: import('../src/lib/landings.ts').Landing[], lastUpdated: string }} */
   let existingData = { landings: [], lastUpdated: new Date().toISOString() };
 
+  // Snapshot original para detectar cambios correctamente (deep clone)
+  let originalData = { landings: [], lastUpdated: '' };
+
   if (fs.existsSync(DATA_FILE)) {
     try {
       existingData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+      originalData = JSON.parse(JSON.stringify(existingData)); // deep clone
     } catch {
       console.warn('⚠️  landings.json corrupto — se empezará desde cero');
     }
@@ -164,6 +168,9 @@ async function main() {
   // -------------------------------------------------------------------------
   /** @type {string[]} */
   const landingsEncontradas = [];
+
+  /** @type {{ slug: string, title: string, autor?: string, commit?: string }[]} */
+  const landingsActualizadas = [];
 
   for (const repo of repos) {
     try {
@@ -198,27 +205,79 @@ async function main() {
       const existing = landingsMap.get(slug);
 
       if (existing) {
-        // La landing ya existe — solo actualizar lastDeploy si el commit cambió
+        // Actualizar metadatos de la landing desde cms-deploy.json
+        let metadataCambio = false;
+        const nuevoBasecamp = deployConfig.basecamp || deployConfig.basecampUrl || null;
+        const nuevoMosaic = deployConfig.mosaic || null;
+        const nuevoCmsUrl = deployConfig.cmsUrl || null;
+        const nuevaDescripcion = deployConfig.description || '';
+
+        if (existing.basecamp !== nuevoBasecamp ||
+            existing.mosaic !== nuevoMosaic ||
+            existing.cmsUrl !== nuevoCmsUrl ||
+            existing.description !== nuevaDescripcion) {
+          metadataCambio = true;
+        }
+
+        existing.basecamp = nuevoBasecamp;
+        existing.mosaic = nuevoMosaic;
+        existing.cmsUrl = nuevoCmsUrl;
+        existing.description = nuevaDescripcion;
+
+        // Solo actualizar lastDeploy si el commit cambió
         if (existing.lastDeploy?.commit !== deployEntry.commit) {
           existing.lastDeploy = deployEntry;
           existing.lastChecked = new Date().toISOString();
           console.log(`🔄 ${slug}: nuevo deploy detectado (${deployEntry.commit.slice(0, 7)})`);
+          landingsActualizadas.push({ slug, title: existing.title, autor: deployEntry.autor, commit: deployEntry.commit });
+          // Obtener mensaje del commit desde GitHub API
+          try {
+            const commitData = await octokit.rest.repos.getCommit({
+              owner: ORG,
+              repo: repo.name,
+              ref: deployEntry.commit,
+            });
+            deployEntry.message = commitData.data.commit.message.split('\n')[0];
+          } catch {
+            // Si falla (rate limit, SHA inválido, etc), seguimos sin mensaje
+          }
         } else {
-          console.log(`✓ ${slug}: sin cambios`);
+          if (metadataCambio) {
+            console.log(`📝 ${slug}: metadatos actualizados`);
+            landingsActualizadas.push({ slug, title: existing.title });
+          } else {
+            console.log(`✓ ${slug}: sin cambios`);
+          }
         }
       } else {
         // Nueva landing descubierta
+        const title = deployConfig.title || humanizeTitle(slug);
         landingsMap.set(slug, {
           slug,
-          title: humanizeTitle(slug),
-          description: '',
+          title,
+          description: deployConfig.description || '',
           url: getLandingUrl(repo),
           lastChecked: new Date().toISOString(),
           status: 'active',
           github: repo.html_url,
+          basecamp: deployConfig.basecamp || deployConfig.basecampUrl || null,
+          mosaic: deployConfig.mosaic || null,
+          cmsUrl: deployConfig.cmsUrl || null,
           lastDeploy: deployEntry,
         });
         console.log(`✨ ${slug}: nueva landing agregada`);
+        landingsActualizadas.push({ slug, title, autor: deployEntry.autor, commit: deployEntry.commit });
+        // Obtener mensaje del commit desde GitHub API
+        try {
+          const commitData = await octokit.rest.repos.getCommit({
+            owner: ORG,
+            repo: repo.name,
+            ref: deployEntry.commit,
+          });
+          deployEntry.message = commitData.data.commit.message.split('\n')[0];
+        } catch {
+          // Si falla (rate limit, SHA inválido, etc), seguimos sin mensaje
+        }
       }
     } catch (err) {
       // 404 = el repo no tiene cms-deploy.json → no es una landing, se skipea.
@@ -253,7 +312,7 @@ async function main() {
   // -------------------------------------------------------------------------
   const nuevasLandings = Array.from(landingsMap.values());
   const huboCambios =
-    JSON.stringify(existingData.landings) !== JSON.stringify(nuevasLandings);
+    JSON.stringify(originalData.landings) !== JSON.stringify(nuevasLandings);
 
   if (!huboCambios) {
     if (forceNotify) {
@@ -281,6 +340,8 @@ async function main() {
   // -------------------------------------------------------------------------
   if (notifyUrl && notifySecret) {
     try {
+      // Siempre notificar si hay cambios o si se forzó con --notify
+      // Enviamos la lista de landings actualizadas para que la notificación sea específica
       const notifyApiUrl = notifyUrl.replace(/\/$/, '') + '/api/notify';
       const notifyResponse = await fetch(notifyApiUrl, {
         method: 'POST',
@@ -288,6 +349,7 @@ async function main() {
           Authorization: `Bearer ${notifySecret}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ changes: landingsActualizadas }),
       });
 
       if (notifyResponse.ok) {

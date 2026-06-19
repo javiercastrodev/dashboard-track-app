@@ -160,6 +160,11 @@ function statusClass(status: string | undefined): string {
                       {landing.lastDeploy.commit.slice(0, 7)}
                     </code>
                     <span class="text-gray-500 dark:text-gray-400 truncate">por {landing.lastDeploy.autor}</span>
+                    {landing.lastDeploy.message && (
+                      <span class="text-gray-400 dark:text-gray-500 text-xs italic truncate w-full">
+                        “{landing.lastDeploy.message}”
+                      </span>
+                    )}
                   </span>
                   <span class="text-sm text-gray-500 dark:text-gray-400">
                     {new Date(landing.lastDeploy.timestamp).toLocaleDateString('es-PE', {

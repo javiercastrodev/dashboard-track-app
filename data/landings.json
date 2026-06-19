@@ -5,16 +5,20 @@
       "title": "Roaming",
       "description": "",
       "url": "https://github.com/HV-DEV-HTML/roaming",
-      "lastChecked": "2026-06-19T13:07:00.832Z",
+      "lastChecked": "2026-06-19T19:42:25.993Z",
       "status": "active",
       "github": "https://github.com/HV-DEV-HTML/roaming",
+      "basecamp": "https://3.basecamp.com/3176794/buckets/10447656/todos/9703888038",
+      "mosaic": "https://www.claro.com.pe/assets/havas/roaming_prod",
+      "cmsUrl": "https://test-claro-pe.prod.clarodigital.net/roaming_1",
       "lastDeploy": {
-        "commit": "799287a62a7c771134e8bd5ffbce91407655b338",
+        "commit": "3faa81aae13493033f4cef81cac5976b4c3cfff7",
         "branch": "main",
-        "timestamp": "2026-06-19T02:49:40.501Z",
-        "autor": "Javier Castro"
+        "timestamp": "2026-06-19T19:23:55.385Z",
+        "autor": "Javier Castro",
+        "message": "update by astro-template"
       }
     }
   ],
-  "lastUpdated": "2026-06-19T13:07:01.431Z"
+  "lastUpdated": "2026-06-19T19:42:26.822Z"
 }

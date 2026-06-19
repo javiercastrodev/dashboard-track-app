@@ -47,11 +47,23 @@ cp .env.example .env
 
 ### 3. Generar llaves VAPID
 
+Las llaves VAPID se generan **una sola vez de forma local** y se usan en todos los ambientes (local, preview, producción). Son un par de llaves asimétricas como SSH — el navegador las usa para verificar que el servidor que envía el push es el mismo que autorizó durante la suscripción.
+
 ```bash
 npx web-push generate-vapid-keys --json
 ```
 
-Agregar los valores a `.env` tanto como `PUBLIC_VAPID_KEY` (cliente) como `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` (servidor). Ambas claves públicas DEBEN ser el mismo valor.
+Esto devuelve un objeto con `publicKey` y `privateKey`.
+
+Configurar **las mismas llaves** en tres lugares:
+
+| Variable              | Dónde va               | Valor                        |
+| --------------------- | ---------------------- | ---------------------------- |
+| `PUBLIC_VAPID_KEY`    | `.env` + Vercel env    | `publicKey` generada         |
+| `VAPID_PUBLIC_KEY`    | `.env` + Vercel env    | `publicKey` generada (LA MISMA) |
+| `VAPID_PRIVATE_KEY`   | `.env` + Vercel env    | `privateKey` generada        |
+
+> **Importante**: `PUBLIC_VAPID_KEY` y `VAPID_PUBLIC_KEY` deben tener EXACTAMENTE el mismo valor. La primera se expone al cliente (prefijo `PUBLIC_`), la segunda se usa del lado servidor. Si no coinciden, FCM acepta el push pero Chrome nunca lo muestra (ver sección [Deploy en Vercel → Troubleshooting](#8-troubleshooting)).
 
 ### 4. Desarrollo local
 
@@ -144,6 +156,92 @@ Las variables de entorno se pasan como secrets de GitHub Action:
 - **Producción**: Vercel KV (Upstash Redis)
 
 El módulo `src/lib/kv.ts` auto-detecta: si `KV_URL` está definida usa `@vercel/kv`, si no usa el archivo local.
+
+## Deploy en Vercel
+
+### 1. Proyecto en Vercel
+
+- Importar el repositorio desde Vercel
+- **Framework Preset**: Astro (se auto-detecta)
+- **Build Command**: `astro build` (por defecto)
+- **Output Directory**: `dist`
+- **Node Version**: 20+
+- **Package Manager**: `pnpm` (Vercel lo detecta por el `pnpm-lock.yaml`)
+
+No requiere `vercel.json` — el adapter `@astrojs/vercel` configura todo automáticamente.
+
+### 2. Variables de entorno en Vercel
+
+Agregar TODAS las variables de `.env.example` como **Environment Variables** en el proyecto de Vercel:
+
+| Variable              | Dónde crearla                   |
+| --------------------- | ------------------------------- |
+| `PUBLIC_VAPID_KEY`    | Production + Preview            |
+| `VAPID_PUBLIC_KEY`    | Production + Preview            |
+| `VAPID_PRIVATE_KEY`   | Production + Preview            |
+| `VAPID_SUBJECT`       | Production + Preview            |
+| `NOTIFY_SECRET`       | Production + Preview            |
+| `NOTIFY_URL`          | `https://tudominio.com` (producción) / `https://preview.vercel.app` (preview) |
+| `GH_PAT`              | Sólo Production                 |
+| `KV_URL`              | Production + Preview            |
+| `KV_REST_TOKEN`       | Production + Preview            |
+| `KV_REST_API_URL`     | Production + Preview            |
+
+> **NOTIFY_URL** debe apuntar a la URL del deploy correspondiente (producción o preview). Es la URL que usa el GitHub Action para llamar a `/api/notify`.
+
+### 3. Vercel KV (Upstash Redis)
+
+El proyecto usa persistencia para las suscripciones push:
+
+1. Ir a **Storage** en el dashboard de Vercel
+2. Crear una base **KV** (Upstash Redis)
+3. Vercel inyecta automáticamente `KV_URL`, `KV_REST_TOKEN` y `KV_REST_API_URL` como variables de entorno
+4. No hace falta copiarlas manualmente — Vercel las agrega solas al proyecto vinculado
+
+En desarrollo local, las variables KV deben estar comentadas en `.env` para que el módulo `src/lib/kv.ts` caiga al fallback de `data/subscriptions.json`.
+
+### 4. Dominio personalizado
+
+- Ir a **Project Settings → Domains**
+- Agregar el dominio (ej: `tracking.claro.com.pe`)
+- Seguir las instrucciones de DNS (CNAME apuntando a `cname.vercel-dns.com`)
+
+### 5. Autenticación de notificaciones push
+
+Las notificaciones push requieren **HTTPS** obligatoriamente. Los preview deployments de Vercel (`.vercel.app`) ya incluyen HTTPS, al igual que los dominios personalizados con certificado automático.
+
+### 6. Sincronizar secrets con GitHub Actions
+
+El workflow `.github/workflows/poll-landings.yml` necesita estas variables como **GitHub Actions secrets**:
+
+```bash
+gh secret set NOTIFY_SECRET --repo HV-DEV-HTML/tracking-dashboard
+gh secret set GH_PAT --repo HV-DEV-HTML/tracking-dashboard
+gh variable set NOTIFY_URL --repo HV-DEV-HTML/tracking-dashboard
+```
+
+O desde la UI: **Settings → Secrets and variables → Actions**.
+
+### 7. Verificar el deploy
+
+```bash
+# Build local para validar
+pnpm build
+
+# Probar que el endpoint de notificaciones responde
+curl -X POST https://tudominio.vercel.app/api/notify \
+  -H "Authorization: Bearer $NOTIFY_SECRET"
+```
+
+### 8. Troubleshooting
+
+| Síntoma                     | Causa probable                          | Solución                              |
+| --------------------------- | --------------------------------------- | ------------------------------------- |
+| Build falla                 | Node version incorrecta                 | En Vercel, fijar Node 20+ en Settings |
+| 401 en `/api/notify`        | `NOTIFY_SECRET` no coincide             | Verificar variable en Vercel vs GHA   |
+| Push no llega al browser    | `PUBLIC_VAPID_KEY` y `VAPID_PUBLIC_KEY` no coinciden | Ambas deben tener el mismo valor. Si se cambiaron, los usuarios deben desuscribirse y volver a suscribirse |
+| KV vacío o error 503        | KV_URL no está configurada              | Conectar storage KV en Vercel          |
+| Las landing no se actualizan| GH_PAT sin acceso o expirado           | Regenerar token en GitHub             |
 
 ## Consideraciones técnicas
 
