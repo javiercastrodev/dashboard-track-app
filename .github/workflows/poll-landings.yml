@@ -46,7 +46,7 @@ jobs:
     # -------------------------------------------------------------------------
     env:
       GH_PAT: ${{ secrets.GH_PAT }}
-      NOTIFY_URL: ${{ vars.NOTIFY_URL }}
+      NOTIFY_URL: ${{ secrets.NOTIFY_URL }}
       NOTIFY_SECRET: ${{ secrets.NOTIFY_SECRET }}
 
     steps:
