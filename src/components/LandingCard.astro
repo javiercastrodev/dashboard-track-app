@@ -1,0 +1,194 @@
+---
+/**
+ * LandingCard.astro
+ *
+ * Componente SSR de detalle para una landing individual.
+ * Muestra toda la información disponible: nombre, estado, deploy, enlaces.
+ *
+ * @prop {Landing} landing - Objeto completo de la landing a mostrar.
+ *
+ * Estados internos manejados:
+ * - status undefined o no recognized → badge "desconocido" (amarillo)
+ * - lastDeploy null o undefined → mensaje "Sin deploy registrado"
+ * - Campos opcionales ausentes → se omiten sin romper el layout
+ *
+ * Links externos: todos abren en nueva pestaña con rel="noopener noreferrer".
+ *
+ * @module components/LandingCard
+ */
+
+import type { Landing } from '../lib/landings';
+
+export interface Props {
+  landing: Landing;
+}
+
+const { landing } = Astro.props;
+
+/**
+ * Abrevia un hash de commit a 7 caracteres (estándar de GitHub).
+ * Ej: "a1b2c3d4e5f6..." → "a1b2c3d"
+ */
+function shortCommit(hash: string): string {
+  return hash.length > 7 ? hash.slice(0, 7) : hash;
+}
+
+/**
+ * Formatea un timestamp ISO a una fecha legible en español argentino.
+ * Ej: "2026-06-19T14:30:00.000Z" → "19/6/2026 11:30:59"
+ */
+function formatTimestamp(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('es-PE');
+  } catch {
+    return iso; // fallback: devuelve el string crudo si no se puede parsear
+  }
+}
+
+/**
+ * Retorna la configuración del badge según el estado.
+ */
+function statusBadge(status: string | undefined): { label: string; className: string } {
+  switch (status) {
+    case 'active':
+      return { label: 'Activa', className: 'inline-block text-sm font-semibold px-3 py-1 rounded-full uppercase tracking-wider bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' };
+    case 'inactive':
+      return { label: 'Inactiva', className: 'inline-block text-sm font-semibold px-3 py-1 rounded-full uppercase tracking-wider bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' };
+    default:
+      return { label: 'Desconocido', className: 'inline-block text-sm font-semibold px-3 py-1 rounded-full uppercase tracking-wider bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400' };
+  }
+}
+
+const badge = statusBadge(landing.status);
+---
+
+<article class="max-w-3xl mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 sm:p-5 flex flex-col gap-6 transition-colors duration-300">
+  <!-- Encabezado con nombre y estado -->
+  <header class="flex items-center justify-between gap-4 flex-wrap">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 m-0">
+      {landing.title}
+    </h1>
+    <span class={badge.className}>{badge.label}</span>
+  </header>
+
+  <!-- Descripción -->
+  {landing.description && (
+    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed m-0">{landing.description}</p>
+  )}
+
+  <!-- URL principal -->
+  <div class="flex items-baseline gap-3 text-sm">
+    <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">URL</span>
+    <a
+      href={landing.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="text-blue-600 dark:text-blue-400 no-underline break-all transition-colors duration-200 hover:underline"
+    >
+      {landing.url}
+    </a>
+  </div>
+
+  <!-- Última verificación -->
+  {landing.lastChecked && (
+    <div class="flex items-baseline gap-3 text-sm">
+      <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">Última verificación</span>
+      <span class="text-gray-500 dark:text-gray-400">{formatTimestamp(landing.lastChecked)}</span>
+    </div>
+  )}
+
+  <!-- ============================================================
+       Sección: Deploy
+       ============================================================ -->
+  <section class="border-t border-gray-100 dark:border-gray-800 pt-5">
+    <h2 class="text-base font-bold text-gray-700 dark:text-gray-300 m-0 mb-4">Último deploy</h2>
+
+    {landing.lastDeploy ? (
+      <div class="flex flex-col gap-3">
+        <div class="flex items-baseline gap-3 text-sm">
+          <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">Commit</span>
+          <code class="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-900 dark:text-gray-100">
+            {shortCommit(landing.lastDeploy.commit)}
+          </code>
+        </div>
+
+        <div class="flex items-baseline gap-3 text-sm">
+          <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">Rama</span>
+          <span class="text-gray-500 dark:text-gray-400">{landing.lastDeploy.branch}</span>
+        </div>
+
+        <div class="flex items-baseline gap-3 text-sm">
+          <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">Fecha</span>
+          <span class="text-gray-500 dark:text-gray-400">
+            {formatTimestamp(landing.lastDeploy.timestamp)}
+          </span>
+        </div>
+
+        <div class="flex items-baseline gap-3 text-sm">
+          <span class="font-semibold text-gray-700 dark:text-gray-300 min-w-32 shrink-0">Autor</span>
+          <span class="text-gray-500 dark:text-gray-400">{landing.lastDeploy.autor}</span>
+        </div>
+      </div>
+    ) : (
+      <p class="m-0 text-gray-400 dark:text-gray-500 italic text-sm">Sin deploy registrado</p>
+    )}
+  </section>
+
+  <!-- ============================================================
+       Sección: Enlaces relacionados
+       ============================================================ -->
+  <section class="border-t border-gray-100 dark:border-gray-800 pt-5">
+    <h2 class="text-base font-bold text-gray-700 dark:text-gray-300 m-0 mb-4">Enlaces</h2>
+
+    <div class="flex flex-wrap gap-3">
+      {landing.github && (
+        <a
+          href={landing.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium no-underline transition-all duration-200 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          Repositorio GitHub
+        </a>
+      )}
+
+      {landing.mosaic && (
+        <a
+          href={landing.mosaic}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium no-underline transition-all duration-200 bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          Mosaic
+        </a>
+      )}
+
+      {landing.cmsUrl && (
+        <a
+          href={landing.cmsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium no-underline transition-all duration-200 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          CMS
+        </a>
+      )}
+
+      {landing.basecamp && (
+        <a
+          href={landing.basecamp}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium no-underline transition-all duration-200 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          Basecamp
+        </a>
+      )}
+
+      {/* Si no hay ningún enlace configurado */}
+      {!landing.github && !landing.mosaic && !landing.cmsUrl && !landing.basecamp && (
+        <p class="m-0 text-gray-400 dark:text-gray-500 italic text-sm">No hay enlaces configurados</p>
+      )}
+    </div>
+  </section>
+</article>

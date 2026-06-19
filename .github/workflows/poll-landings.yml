@@ -1,0 +1,103 @@
+# Workflow: Poll Landings
+#
+# Ejecuta el script de polling cada 15 minutos para detectar nuevos deploys
+# en los repositorios de la organización HV-DEV-HTML y actualizar el archivo
+# data/landings.json.
+#
+# También se puede ejecutar manualmente via workflow_dispatch para forzar
+# una actualización inmediata (útil durante desarrollo o debugging).
+#
+# Secretos requeridos (settings → secrets and variables → actions):
+#   GH_PAT        — Personal Access Token con scope "repo" para leer la org
+#   NOTIFY_SECRET — Secret compartido con el endpoint /api/notify en Vercel
+#
+# Variables de entorno requeridas:
+#   NOTIFY_URL    — URL base de la app deployada (ej: https://tracking.vercel.app)
+#
+# @module .github/workflows/poll-landings
+
+name: Poll Landings
+
+on:
+  # ---------------------------------------------------------------------------
+  # Trigger programado: cada 15 minutos
+  # ---------------------------------------------------------------------------
+  schedule:
+    - cron: '*/15 * * * *'
+
+  # ---------------------------------------------------------------------------
+  # Trigger manual: permite ejecutar desde la UI de GitHub Actions
+  # ---------------------------------------------------------------------------
+  workflow_dispatch:
+
+# ---------------------------------------------------------------------------
+# Permisos: necesitamos write en contents para commitear landings.json
+# ---------------------------------------------------------------------------
+permissions:
+  contents: write
+
+jobs:
+  poll:
+    name: Poll landings
+    runs-on: ubuntu-latest
+
+    # -------------------------------------------------------------------------
+    # Variables de entorno para el script
+    # -------------------------------------------------------------------------
+    env:
+      GH_PAT: ${{ secrets.GH_PAT }}
+      NOTIFY_URL: ${{ vars.NOTIFY_URL }}
+      NOTIFY_SECRET: ${{ secrets.NOTIFY_SECRET }}
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout del repositorio (con el token para poder pushear después)
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      # -----------------------------------------------------------------------
+      # 2. Setup Node.js 20
+      # -----------------------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # -----------------------------------------------------------------------
+      # 3. Instalar dependencias (necesitamos octokit)
+      # -----------------------------------------------------------------------
+      - name: Install dependencies
+        run: npm ci --omit=dev
+        # --omit=dev instala solo producción (octokit está en dependencies)
+
+      # -----------------------------------------------------------------------
+      # 4. Ejecutar el script de polling
+      # -----------------------------------------------------------------------
+      - name: Run poll script
+        id: poll
+        run: node scripts/poll.mjs
+
+      # -----------------------------------------------------------------------
+      # 5. Commitear y pushear si landings.json cambió
+      # -----------------------------------------------------------------------
+      # El script de polling solo reescribe landings.json cuando hay cambios
+      # reales. Si no cambió nada, git diff no encuentra diferencias y este
+      # paso se skipea automáticamente.
+      - name: Commit and push if changed
+        run: |
+          if [[ -z "$(git status --porcelain data/landings.json)" ]]; then
+            echo "ℹ️  Sin cambios en landings.json — no se commitea nada"
+            exit 0
+          fi
+
+          git config user.name "tracking-bot"
+          git config user.email "bot@tracking.claro.com"
+
+          git add data/landings.json
+          git commit -m "chore: actualizar landings [skip ci]"
+          git push
+
+          echo "✅ landings.json commiteado y pusheado"

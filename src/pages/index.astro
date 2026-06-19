@@ -1,0 +1,99 @@
+---
+import "../styles/global.css";
+/**
+ * Página principal del Dashboard de Tracking.
+ *
+ * Renderizado SSR: obtiene los datos de landings desde la librería directamente
+ * (no via fetch al API route) para minimizar latencia en la carga inicial.
+ *
+ * Layout:
+ * - Header con navegación (Dashboard, Suscripción) + ThemeToggle
+ * - LandingTable con los datos de landings
+ * - Footer con timestamp de última actualización
+ *
+ * @module pages/index
+ */
+
+ import { ClientRouter } from "astro:transitions";
+import LandingTable from '../components/LandingTable.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import { getAllLandings } from '../lib/landings';
+
+const data = getAllLandings();
+const now = new Date().toLocaleString('es-PE');
+---
+
+<!doctype html>
+<html lang="es" class="motion-safe:scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracking Dashboard</title>
+    <meta name="description" content="Dashboard de seguimiento de landings - Claro" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <ClientRouter />
+  </head>
+  <body
+    class="m-0 font-sans bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col"
+  >
+    <!-- ============================================================
+         Header
+         ============================================================ -->
+    <header
+      class="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 transition-colors duration-300"
+    >
+      <div class="w-full max-w-5xl mx-auto px-5">
+        <div class="flex items-center justify-between py-3">
+          <a href="/" class="flex items-center gap-2 no-underline text-inherit">
+            <span class="text-2xl leading-none">📡</span>
+            <span class="text-lg font-bold text-gray-900 dark:text-white transition-colors duration-300">
+              Tracking Dashboard
+            </span>
+          </a>
+
+          <div class="flex items-center gap-1">
+            <nav class="flex gap-0.5" aria-label="Navegación principal">
+              <a
+                href="/"
+                class="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 no-underline rounded-md transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+              >
+                Dashboard
+              </a>
+              <a
+                href="/subscribe"
+                class="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 no-underline rounded-md transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+              >
+                Suscripción
+              </a>
+            </nav>
+            <ThemeToggle />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============================================================
+         Main
+         ============================================================ -->
+    <main class="w-full max-w-5xl mx-auto px-5 flex-1 pt-5 pb-8 animate-fade-in">
+      <LandingTable
+        landings={data.landings}
+        lastUpdated={data.lastUpdated}
+      />
+    </main>
+
+    <!-- ============================================================
+         Footer
+         ============================================================ -->
+    <footer
+      class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3 transition-colors duration-300"
+    >
+      <div class="w-full max-w-5xl mx-auto px-5">
+        <p class="m-0 text-xs text-gray-400 dark:text-gray-500">
+          Última actualización: {now}
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

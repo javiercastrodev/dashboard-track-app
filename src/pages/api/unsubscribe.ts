@@ -39,9 +39,9 @@ export const POST: APIRoute = async ({ request }) => {
     });
   } catch {
     return new Response(
-      JSON.stringify({ error: 'Cuerpo de solicitud inválido' }),
+      JSON.stringify({ error: 'Servicio de suscripciones no disponible' }),
       {
-        status: 400,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       }
     );

@@ -1,0 +1,231 @@
+---
+/**
+ * SubscribeButton.astro
+ *
+ * Componente de suscripción a notificaciones push.
+ * Renderiza HTML estático y un script del lado del cliente que hidrata
+ * el estado correcto según las capacidades del navegador.
+ *
+ * La clave pública VAPID se pasa desde las env vars de Astro
+ * (PUBLIC_VAPID_KEY) para que esté disponible en cliente.
+ *
+ * Estados que maneja el script:
+ * 1. Prompt: navegador soporta push, sin permiso aún → botón "Activar notificaciones"
+ * 2. Subscribed: permiso concedido y suscripción activa → "Notificaciones activadas ✅"
+ *    + botón "Desuscribirse"
+ * 3. Unsupported: push no disponible → mensaje informativo
+ *
+ * @module components/SubscribeButton
+ */
+
+const VAPID_PUBLIC_KEY = import.meta.env.PUBLIC_VAPID_KEY ?? '';
+---
+
+<div id="subscribe-container" class="max-w-lg mx-auto">
+  <!-- Estado inicial (loading mientras el script determina el estado real) -->
+  <div id="subscribe-prompt" class="flex flex-col items-center gap-4 text-center hidden">
+    <p class="text-base text-gray-700 dark:text-gray-300 m-0 leading-relaxed">
+      Recibí notificaciones cuando una landing se actualice
+    </p>
+    <button
+      id="btn-subscribe"
+      class="px-6 py-2.5 rounded-lg text-sm font-semibold cursor-pointer transition-all duration-200 active:scale-[0.97] border-none bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    >
+      Activar notificaciones
+    </button>
+  </div>
+
+  <!-- Estado suscripto -->
+  <div id="subscribe-subscribed" class="flex flex-col items-center gap-4 text-center hidden">
+    <p class="text-lg font-semibold text-green-700 dark:text-green-400 m-0">
+      Notificaciones activadas ✅
+    </p>
+    <button
+      id="btn-unsubscribe"
+      class="px-6 py-2.5 rounded-lg text-sm font-semibold cursor-pointer transition-all duration-200 active:scale-[0.97] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    >
+      Desuscribirse
+    </button>
+  </div>
+
+  <!-- Estado no soportado -->
+  <div id="subscribe-unsupported" class="flex flex-col items-center gap-4 text-center hidden">
+    <p class="text-gray-400 dark:text-gray-500 italic text-base m-0">
+      Tu navegador no soporta notificaciones push
+    </p>
+  </div>
+</div>
+
+<script define:vars={{ VAPID_PUBLIC_KEY }}>
+  /**
+   * Script de hidratación para SubscribeButton.
+   *
+   * Flujo al cargar la página:
+   * 1. Verifica soporte de Service Worker + Push Manager
+   * 2. Si no soporta → muestra estado unsupported
+   * 3. Si soporta, verifica si ya hay suscripción activa
+   * 4. Muestra prompt o subscribed según corresponda
+   *
+   * Flujo de suscripción:
+   * 1. Registra el Service Worker (/sw.js)
+   * 2. Solicita permiso con Notification.requestPermission()
+   * 3. Si denegado → muestra hint al usuario
+   * 4. Si concedido → pushManager.subscribe() con VAPID
+   * 5. POST /api/subscribe con la suscripción
+   * 6. Actualiza UI a "subscribed"
+   *
+   * Flujo de desuscripción:
+   * 1. POST /api/unsubscribe con el endpoint
+   * 2. pushManager.unsubscribe() en el navegador
+   * 3. Actualiza UI a "prompt"
+   */
+  (function () {
+    var VAPID_KEY = VAPID_PUBLIC_KEY;
+
+    // Elementos del DOM
+    var container = document.getElementById('subscribe-container');
+    var promptState = document.getElementById('subscribe-prompt');
+    var subscribedState = document.getElementById('subscribe-subscribed');
+    var unsupportedState = document.getElementById('subscribe-unsupported');
+    var btnSubscribe = document.getElementById('btn-subscribe');
+    var btnUnsubscribe = document.getElementById('btn-unsubscribe');
+
+    // Si no hay container, salir
+    if (!container) return;
+
+    // Muestra un único estado y oculta los otros
+    function showState(stateEl) {
+      [promptState, subscribedState, unsupportedState].forEach(function (el) {
+        if (el) el.classList.toggle('hidden', el !== stateEl);
+      });
+    }
+
+    // Verifica si el navegador soporta Web Push
+    function isPushSupported() {
+      return 'serviceWorker' in navigator && 'PushManager' in window;
+    }
+
+    // Convierte clave VAPID base64 url-safe a Uint8Array
+    function urlBase64ToUint8Array(base64String) {
+      var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      var base64 = (base64String + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+      var rawData = atob(base64);
+      var outputArray = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    // Obtiene la suscripción actual si existe
+    async function getExistingSubscription() {
+      try {
+        var registration = await navigator.serviceWorker.ready;
+        return await registration.pushManager.getSubscription();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Envía la suscripción al servidor
+    async function sendSubscriptionToServer(subscription) {
+      try {
+        var subJSON = subscription.toJSON();
+        var res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(subJSON),
+        });
+        return res.ok;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Elimina la suscripción del servidor
+    async function removeSubscriptionFromServer(endpoint) {
+      try {
+        var res = await fetch('/api/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: endpoint }),
+        });
+        return res.ok;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Maneja clic en "Activar notificaciones"
+    async function handleSubscribe() {
+      try {
+        var registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+
+        var permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          alert('Para recibir notificaciones, necesitás habilitar el permiso en la configuración del navegador.');
+          return;
+        }
+
+        var appKey = urlBase64ToUint8Array(VAPID_KEY);
+        var subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: appKey,
+        });
+
+        var saved = await sendSubscriptionToServer(subscription);
+        if (!saved) {
+          console.warn('No se pudo guardar la suscripción en el servidor');
+        }
+
+        showState(subscribedState);
+      } catch (err) {
+        console.error('Error al suscribirse:', err);
+        alert('Ocurrió un error al activar las notificaciones. Intentalo de nuevo.');
+      }
+    }
+
+    // Maneja clic en "Desuscribirse"
+    async function handleUnsubscribe() {
+      try {
+        var subscription = await getExistingSubscription();
+        if (subscription) {
+          await removeSubscriptionFromServer(subscription.endpoint);
+          await subscription.unsubscribe();
+        }
+        showState(promptState);
+      } catch (err) {
+        console.error('Error al desuscribirse:', err);
+      }
+    }
+
+    // Inicializa el componente
+    async function init() {
+      if (!isPushSupported()) {
+        showState(unsupportedState);
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        var subscription = await getExistingSubscription();
+        if (subscription) {
+          showState(subscribedState);
+        } else {
+          showState(promptState);
+        }
+      } else {
+        showState(promptState);
+      }
+    }
+
+    // Bindear eventos e iniciar
+    if (btnSubscribe) btnSubscribe.addEventListener('click', handleSubscribe);
+    if (btnUnsubscribe) btnUnsubscribe.addEventListener('click', handleUnsubscribe);
+    init();
+  })();
+</script>
+
+

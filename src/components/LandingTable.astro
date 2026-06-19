@@ -1,0 +1,158 @@
+---
+/**
+ * LandingTable.astro
+ *
+ * Componente SSR que renderiza una grilla responsive de tarjetas de landing.
+ * Los datos se reciben por props (prop-drilling desde la página) para que
+ * el renderizado sea 100% del lado del servidor.
+ *
+ * Estados:
+ * - Loading: se usa cuando `loading=true`. Muestra 3 skeleton cards con animación.
+ * - Empty: landings array vacío y loading=false. Muestra mensaje informativo.
+ * - Error: mensaje de error con botón de reintento (requiere page reload).
+ * - Happy: grilla de tarjetas compactas con orden alfabético por título.
+ *
+ * @prop {Landing[]} landings - Array de landings a mostrar.
+ * @prop {string} lastUpdated - Timestamp ISO de la última actualización.
+ * @prop {boolean} loading - Si es true, muestra skeleton en lugar de datos.
+ * @prop {string | null} error - Mensaje de error si algo falló.
+ *
+ * Edge cases:
+ * - landings vacío y no loading → muestra Empty.
+ * - error presente → muestra Error (oculta cualquier otro contenido).
+ * - loading true → muestra skeleton aunque haya datos (útil para refetch).
+ *
+ * @module components/LandingTable
+ */
+
+import type { Landing } from '../lib/landings';
+
+export interface Props {
+  landings: Landing[];
+  lastUpdated: string;
+  loading?: boolean;
+  error?: string | null;
+}
+
+const { landings, lastUpdated, loading = false, error = null } = Astro.props;
+
+// Orden alfabético por título, case-insensitive
+const sortedLandings = [...landings].sort((a, b) =>
+  a.title.localeCompare(b.title, 'es', { sensitivity: 'base' })
+);
+
+/**
+ * Retorna la clase CSS para el badge de estado.
+ * - "active" → verde
+ * - "inactive" → gris
+ * - cualquier otro valor o undefined → "unknown" (amarillo)
+ */
+function statusClass(status: string | undefined): string {
+  switch (status) {
+    case 'active':
+      return 'inline-block text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400';
+    case 'inactive':
+      return 'inline-block text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400';
+    default:
+      return 'inline-block text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400';
+  }
+}
+---
+
+<!-- Bloque de error -->
+{
+  error && (
+    <div class="flex flex-col items-center justify-center py-12 px-6 text-center text-red-600 dark:text-red-400" role="alert">
+      <p class="text-4xl mb-3">⚠️</p>
+      <p class="text-lg font-semibold m-0 mb-2">{error}</p>
+      <button
+        class="mt-4 px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium cursor-pointer transition-colors duration-200 border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        onclick="window.location.reload()"
+      >
+        Reintentar
+      </button>
+    </div>
+  )
+}
+
+<!-- Bloque de loading (skeleton) -->
+{
+  loading && (
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-5">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 flex flex-col gap-3 animate-pulse" aria-busy="true">
+          <div class="bg-gray-200 dark:bg-gray-700 rounded h-5 w-2/3" />
+          <div class="bg-gray-200 dark:bg-gray-700 rounded h-4 w-full" />
+          <div class="bg-gray-200 dark:bg-gray-700 rounded h-4 w-2/5" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+<!-- Bloque vacío -->
+{
+  !loading && !error && landings.length === 0 && (
+    <div class="flex flex-col items-center justify-center py-12 px-6 text-center">
+      <p class="text-4xl mb-3">📋</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-gray-100 m-0 mb-2">No hay landings registradas</p>
+      <p class="text-sm text-gray-400 dark:text-gray-500 m-0">
+        Última actualización: {new Date(lastUpdated).toLocaleString('es-PE')}
+      </p>
+    </div>
+  )
+}
+
+<!-- Bloque con datos -->
+{
+  !loading && !error && landings.length > 0 && (
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-5">
+      {sortedLandings.map((landing) => (
+        <a
+          href={`/landing/${landing.slug}`}
+          class="no-underline text-inherit block group"
+          title={`Ver detalle de ${landing.title}`}
+        >
+          <article class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 flex flex-col gap-3 transition-all duration-200 group-hover:border-blue-500 dark:group-hover:border-blue-400 group-hover:shadow-lg group-hover:shadow-blue-500/10 dark:group-hover:shadow-blue-500/5 h-full">
+            <header class="flex items-center justify-between gap-2">
+              <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 m-0 truncate">
+                {landing.title}
+              </h3>
+              <span class={statusClass(landing.status)}>
+                {landing.status ?? 'desconocido'}
+              </span>
+            </header>
+
+            {landing.description && (
+              <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed m-0">
+                {landing.description}
+              </p>
+            )}
+
+            <footer class="flex flex-col gap-1 mt-auto">
+              {landing.lastDeploy ? (
+                <>
+                  <span class="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1 flex-wrap">
+                    <span class="text-gray-400 dark:text-gray-500">Deploy:</span>
+                    <code class="font-mono text-[0.65rem] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-900 dark:text-gray-100">
+                      {landing.lastDeploy.commit.slice(0, 7)}
+                    </code>
+                    <span class="text-gray-500 dark:text-gray-400 truncate">por {landing.lastDeploy.autor}</span>
+                  </span>
+                  <span class="text-[0.65rem] text-gray-400 dark:text-gray-500">
+                    {new Date(landing.lastDeploy.timestamp).toLocaleDateString('es-PE', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit'
+                    })}
+                  </span>
+                </>
+              ) : (
+                <span class="text-xs text-gray-400 dark:text-gray-500 italic">Sin deploy registrado</span>
+              )}
+            </footer>
+          </article>
+        </a>
+      ))}
+    </div>
+  )
+}

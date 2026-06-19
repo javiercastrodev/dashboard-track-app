@@ -3,7 +3,7 @@
  *
  * Este archivo debe estar en /public para que Astro lo sirva sin procesar,
  * ya que el Service Worker debe estar en el scope raíz del sitio para poder
- * interceptar todas las URLs (incluyendo las API routes).
+ * interceptar todas las URLs del dashboard.
  *
  * @module sw
  */
@@ -11,10 +11,17 @@
 /**
  * Evento: push
  *
- * Se dispara cuando el servidor envía una notificación push al navegador.
- * El payload es un JSON con: { title, body, icon, url }.
+ * Se dispara cuando el servidor envía una notificación push al navegador,
+ * incluso si la pestaña del dashboard está cerrada.
  *
- * Si no se puede parsear el payload, muestra el texto crudo como fallback.
+ * El payload es un JSON con: { title, body, icon, url }.
+ * - title: título de la notificación (ej: "Prepago Móvil actualizada")
+ * - body: texto del cuerpo (ej: "Nuevo deploy por Javier Castro")
+ * - icon: ícono que se muestra en la notificación
+ * - url: URL a abrir cuando el usuario hace clic
+ *
+ * Si no se puede parsear el payload, muestra el texto crudo como fallback
+ * para no perder la notificación.
  */
 self.addEventListener('push', (event) => {
   let data = {};
@@ -30,8 +37,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Tracking Dashboard';
   const options = {
     body: data.body || '',
-    icon: data.icon || '/icon.png',
-    badge: data.badge || '/badge.png',
+    icon: data.icon || '/favicon.svg',
+    badge: data.badge || '/favicon.svg',
     data: data.url ? { url: data.url } : null,
   };
 

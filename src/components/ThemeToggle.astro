@@ -1,0 +1,133 @@
+---
+/**
+ * ThemeToggle.astro
+ *
+ * Botón de alternancia de modo oscuro/claro del lado del cliente.
+ * - En mount: lee localStorage → `prefers-color-scheme` → default 'light'
+ * - Toggle: agrega/remueve clase `dark` en `<html>` y persiste en localStorage
+ * - Icono sol ☀️ en modo oscuro, luna 🌙 en modo claro
+ * - Transición suave del icono con CSS
+ * - Accesible: aria-label, role, soporte de teclado
+ *
+ * @module components/ThemeToggle
+ */
+
+// Sin frontmatter props — es un componente puramente de cliente
+---
+
+<button
+  id="theme-toggle"
+  class="
+    relative inline-flex items-center justify-center
+    w-9 h-9 rounded-lg
+    text-gray-500 dark:text-gray-400
+    hover:bg-gray-100 dark:hover:bg-gray-800
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+    transition-colors duration-200
+    cursor-pointer border-none
+  "
+  type="button"
+  role="switch"
+  aria-label="Alternar modo oscuro"
+  aria-checked="false"
+  title="Alternar modo oscuro"
+>
+  <!-- Icono sol (visible en dark mode) -->
+  <svg
+    id="theme-icon-sun"
+    class="absolute size-5 transition-all duration-300 ease-out rotate-0 scale-100 dark:rotate-90 dark:scale-0"
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2" />
+    <path d="M12 20v2" />
+    <path d="m4.93 4.93 1.41 1.41" />
+    <path d="m17.66 17.66 1.41 1.41" />
+    <path d="M2 12h2" />
+    <path d="M20 12h2" />
+    <path d="m6.34 17.66-1.41 1.41" />
+    <path d="m19.07 4.93-1.41 1.41" />
+  </svg>
+
+  <!-- Icono luna (visible en light mode) -->
+  <svg
+    id="theme-icon-moon"
+    class="absolute size-5 transition-all duration-300 ease-out rotate-90 scale-0 dark:rotate-0 dark:scale-100"
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+</button>
+
+<script>
+  (function () {
+    const STORAGE_KEY = 'theme';
+    const DARK_CLASS = 'dark';
+
+    const button = document.getElementById('theme-toggle');
+    if (!button) return;
+
+    /** Determina el tema inicial: localStorage → sistema → 'light' */
+    function getInitialTheme(): 'dark' | 'light' {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === 'dark' || stored === 'light') return stored;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+    }
+
+    /** Aplica el tema al HTML y actualiza aria-checked */
+    function applyTheme(theme: 'dark' | 'light') {
+      const isDark = theme === 'dark';
+      document.documentElement.classList.toggle(DARK_CLASS, isDark);
+      button?.setAttribute('aria-checked', String(isDark));
+    }
+
+    /** Alterna y persiste el tema */
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.contains(DARK_CLASS);
+      const newTheme = isDark ? 'light' : 'dark';
+      localStorage.setItem(STORAGE_KEY, newTheme);
+      applyTheme(newTheme);
+    }
+
+    // Inicializar
+    applyTheme(getInitialTheme());
+
+    // Bindear evento
+    button.addEventListener('click', toggleTheme);
+
+    // Soporte de teclado (Enter y Space ya funcionan con <button>)
+    button.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleTheme();
+      }
+    });
+
+    // Escuchar cambios del sistema si no hay preferencia guardada
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem(STORAGE_KEY)) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  })();
+</script>

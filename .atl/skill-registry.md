@@ -6,6 +6,7 @@ Last updated: 2026-06-19
 
 ## Sources scanned
 
+- .agents/skills
 - /Users/javiercastro/.agents/skills
 - /Users/javiercastro/.config/opencode/skills
 - /Users/javiercastro/.claude/skills
@@ -29,6 +30,7 @@ Last updated: 2026-06-19
 | `find-skills` | Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill. | user | `/Users/javiercastro/.agents/skills/find-skills/SKILL.md` |
 | `go-testing` | Trigger: Go tests, go test coverage, Bubbletea teatest, golden files. Apply focused Go testing patterns. | user | `/Users/javiercastro/.config/opencode/skills/go-testing/SKILL.md` |
 | `imagegen` | Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas. | user | `/Users/javiercastro/.codex/skills/.system/imagegen/SKILL.md` |
+| `interaction-design` | Design and implement microinteractions, motion design, transitions, and user feedback patterns. Use when adding polish to UI interactions, implementing loading states, or creating delightful user experiences. | project | `/Users/javiercastro/Documents/projects/claro-repositorios-tracking/.agents/skills/interaction-design/SKILL.md` |
 | `issue-creation` | Create Gentle AI issues with issue-first checks. Trigger: creating GitHub issues, bug reports, or feature requests. | user | `/Users/javiercastro/.config/opencode/skills/issue-creation/SKILL.md` |
 | `judgment-day` | Trigger: judgment day, dual review, adversarial review, juzgar. Run blind dual review, fix confirmed issues, then re-judge. | user | `/Users/javiercastro/.config/opencode/skills/judgment-day/SKILL.md` |
 | `openai-docs` | Use when the user asks how to build with OpenAI products or APIs, asks about Codex itself or choosing Codex surfaces, needs up-to-date official documentation with citations, help choosing the latest model for a use case, or model upgrade and prompt-upgrade guidance; use OpenAI docs MCP tools for non-Codex docs questions, use the Codex manual helper first for broad Codex self-knowledge, and restrict fallback browsing to official OpenAI domains. | user | `/Users/javiercastro/.codex/skills/.system/openai-docs/SKILL.md` |

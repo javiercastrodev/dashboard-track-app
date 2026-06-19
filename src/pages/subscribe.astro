@@ -1,0 +1,212 @@
+---
+/**
+ * Página de suscripción a notificaciones push.
+ *
+ * SSR: renderiza el shell de la página con una explicación de las notificaciones
+ * push y el componente SubscribeButton que maneja toda la lógica del lado cliente.
+ *
+ * Contenido:
+ * - Explicación de qué son las notificaciones push (pensada para PMs / Area Chiefs)
+ * - SubscribeButton como client island
+ * - Mensaje post-suscripción exitosa
+ * - Botón opcional "Probar notificación" que llama a /api/test-notification
+ *   (solo funcional si el endpoint está implementado)
+ *
+ * @module pages/subscribe
+ */
+
+import "../styles/global.css";
+import { ClientRouter } from 'astro:transitions';
+import SubscribeButton from '../components/SubscribeButton.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+---
+
+<!doctype html>
+<html lang="es" class="motion-safe:scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suscripción — Tracking Dashboard</title>
+    <meta
+      name="description"
+      content="Activá notificaciones push para recibir alertas cuando las landings se actualicen"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <ClientRouter />
+  </head>
+  <body
+    class="m-0 font-sans bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col"
+  >
+    <!-- ============================================================
+         Header
+         ============================================================ -->
+    <header
+      class="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 transition-colors duration-300"
+    >
+      <div class="w-full max-w-5xl mx-auto px-5">
+        <div class="flex items-center justify-between py-3">
+          <a href="/" class="flex items-center gap-2 no-underline text-inherit">
+            <span class="text-2xl leading-none">📡</span>
+            <span class="text-lg font-bold text-gray-900 dark:text-white transition-colors duration-300">
+              Tracking Dashboard
+            </span>
+          </a>
+
+          <div class="flex items-center gap-1">
+            <nav class="flex gap-0.5" aria-label="Navegación principal">
+              <a
+                href="/"
+                class="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 no-underline rounded-md transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+              >
+                Dashboard
+              </a>
+              <a
+                href="/subscribe"
+                class="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 no-underline rounded-md transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+              >
+                Suscripción
+              </a>
+            </nav>
+            <ThemeToggle />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============================================================
+         Main
+         ============================================================ -->
+    <main class="w-full max-w-5xl mx-auto px-5 flex-1 pt-5 pb-8 animate-fade-in">
+      <div class="max-w-xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100 m-0">
+          Notificaciones push
+        </h1>
+
+        <!-- Explicación para PMs / Area Chiefs -->
+        <section class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6 transition-colors duration-300">
+          <h2 class="text-base font-bold text-gray-700 dark:text-gray-300 mt-5 mb-2 first:mt-0">
+            ¿Qué son las notificaciones push?
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed m-0">
+            Las notificaciones push te permiten recibir alertas en tu navegador
+            —incluso con la pestaña cerrada— cuando ocurren cambios importantes
+            en las landings del tracking.
+          </p>
+
+          <h2 class="text-base font-bold text-gray-700 dark:text-gray-300 mt-5 mb-2">
+            ¿Para qué sirven?
+          </h2>
+          <ul class="m-2 p-0 list-none">
+            <li class="flex items-baseline gap-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-2">
+              <span class="text-blue-600 font-bold shrink-0">•</span>
+              <span><strong class="font-semibold text-gray-700 dark:text-gray-300">Alertas de deploy:</strong> sabé al instante cuando una landing se actualiza, sin tener que recargar el dashboard.</span>
+            </li>
+            <li class="flex items-baseline gap-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-2">
+              <span class="text-blue-600 font-bold shrink-0">•</span>
+              <span><strong class="font-semibold text-gray-700 dark:text-gray-300">Detección temprana:</strong> si un deploy falla o una landing queda inactiva, recibís la notificación al toque.</span>
+            </li>
+            <li class="flex items-baseline gap-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-2">
+              <span class="text-blue-600 font-bold shrink-0">•</span>
+              <span><strong class="font-semibold text-gray-700 dark:text-gray-300">Sin distracciones:</strong> las notificaciones son silenciosas y no interrumpen tu flujo de trabajo. Aparecen en el centro de notificaciones del sistema operativo.</span>
+            </li>
+          </ul>
+
+          <h2 class="text-base font-bold text-gray-700 dark:text-gray-300 mt-5 mb-2">
+            ¿Cómo funciona?
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed m-0">
+            Al activar las notificaciones, el navegador te va a pedir permiso
+            una sola vez. Después de eso, el dashboard puede enviarte alertas
+            automáticamente cada vez que se detecte un cambio. En cualquier
+            momento podés desactivarlas desde esta misma página.
+          </p>
+
+          <p class="text-xs text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg mt-4 leading-relaxed m-0">
+            ⚠️ Solo se envían notificaciones cuando hay cambios reales en las
+            landings registradas. No hay spam ni notificaciones publicitarias.
+          </p>
+        </section>
+
+        <!-- Componente de suscripción -->
+        <section class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6 text-center transition-colors duration-300">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 m-0 mb-5">
+            Activá las notificaciones
+          </h2>
+          <SubscribeButton />
+        </section>
+
+        <!-- Botón para probar notificación (opcional v1) -->
+        <section class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6 transition-colors duration-300">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 m-0 mb-2">
+            Probar notificación
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 m-0 mb-4 leading-relaxed">
+            Si ya activaste las notificaciones, podés probar que funcionan
+            correctamente con este botón. Se va a enviar una notificación de
+            prueba a tu navegador.
+          </p>
+          <button
+            id="btn-test-notification"
+            class="px-5 py-2.5 rounded-lg text-sm font-semibold cursor-pointer transition-all duration-200 active:scale-[0.97] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            Probar notificación
+          </button>
+          <p id="test-result" class="mt-3 text-sm text-gray-500 dark:text-gray-400 hidden"></p>
+        </section>
+
+        <!-- Link de vuelta al dashboard -->
+        <div class="text-center">
+          <a
+            href="/"
+            class="inline-block text-sm text-blue-600 dark:text-blue-400 no-underline py-2 px-4 transition-colors duration-200 hover:underline"
+          >
+            ← Volver al dashboard
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <!-- ============================================================
+         Footer
+         ============================================================ -->
+    <footer
+      class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3 transition-colors duration-300"
+    >
+      <div class="w-full max-w-5xl mx-auto px-5">
+        <p class="m-0 text-xs text-gray-400 dark:text-gray-500">
+          Tracking Dashboard — Claro
+        </p>
+      </div>
+    </footer>
+
+    <!-- Script para el botón de prueba de notificación -->
+    <script>
+      document.getElementById('btn-test-notification')?.addEventListener('click', async () => {
+        const resultEl = document.getElementById('test-result');
+        if (!resultEl) return;
+
+        resultEl.classList.remove('hidden');
+        resultEl.textContent = 'Enviando notificación de prueba...';
+
+        try {
+          const res = await fetch('/api/test-notification', { method: 'POST' });
+          if (res.ok) {
+            resultEl.textContent = '✅ Notificación de prueba enviada.';
+
+            // Limpiar mensaje después de 5 segundos
+            setTimeout(() => {
+              resultEl.classList.add('hidden');
+            }, 5000);
+          } else {
+            const err = await res.json().catch(() => ({ error: 'Error desconocido' }));
+            resultEl.textContent = `❌ ${err.error ?? 'Error al enviar la notificación de prueba'}.`;
+          }
+        } catch {
+          resultEl.textContent =
+            '❌ No se pudo conectar con el servidor. El endpoint de prueba puede no estar implementado en esta versión.';
+        }
+      });
+    </script>
+  </body>
+</html>

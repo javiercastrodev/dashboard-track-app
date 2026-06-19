@@ -14,7 +14,21 @@ import path from 'node:path';
 // Interfaces
 // ---------------------------------------------------------------------------
 
-/** Datos de una landing individual, combinados desde landing.config.json + cms-deploy.json */
+/** Información del último deploy registrado para una landing */
+export interface DeployInfo {
+  commit: string;       // Hash completo del commit (se muestra abreviado)
+  branch: string;       // Rama desde la que se deployó
+  timestamp: string;    // ISO string del momento del deploy
+  autor: string;        // Nombre del autor del commit
+}
+
+/**
+ * Datos de una landing individual.
+ *
+ * Combina información de landing.config.json + cms-deploy.json.
+ * Los campos de deploy y links son opcionales porque el GitHub Action
+ * de polling aún puede estar poblando datos gradualmente.
+ */
 export interface Landing {
   slug: string;
   title: string;
@@ -22,6 +36,16 @@ export interface Landing {
   url: string;
   lastChecked?: string;
   status?: string;
+  /** URL al repositorio de GitHub */
+  github?: string;
+  /** URL al dashboard de Mosaic (CMS) */
+  mosaic?: string;
+  /** URL directa al CMS */
+  cmsUrl?: string;
+  /** URL al proyecto en Basecamp */
+  basecamp?: string;
+  /** Información del último deploy (null si nunca se deployó) */
+  lastDeploy?: DeployInfo | null;
 }
 
 /** Estructura completa del archivo landings.json */
