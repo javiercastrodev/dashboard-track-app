@@ -2,9 +2,10 @@
  * Módulo de persistencia para suscripciones Web Push.
  *
  * Dos modos de operación:
- * - **Producción (Vercel)**: usa Vercel KV (Redis) cuando la env var `KV_URL` está presente.
+ * - **Producción (Vercel)**: usa Upstash Redis (migrado desde Vercel KV) cuando
+ *   las env vars `UPSTASH_REDIS_REST_URL` o `KV_REST_API_URL` están presentes.
  * - **Local**: usa `data/subscriptions.json` como respaldo, así podés probar
- *   todo el flujo de notificaciones sin necesidad de Vercel KV.
+ *   todo el flujo de notificaciones sin necesidad de Redis.
  *
  * Cada suscripción es única por endpoint (dedup automático).
  *
@@ -19,33 +20,39 @@ import path from 'node:path';
 // ---------------------------------------------------------------------------
 
 /**
- * `true` si estamos en Vercel (o las env vars de KV están configuradas).
- * 
- * Para usar Vercel KV se requieren las 3 variables:
- *   KV_URL, KV_REST_API_URL, KV_REST_API_TOKEN
+ * `true` si estamos en Vercel (o las env vars de Redis están configuradas).
+ *
+ * Soporta tanto los nombres nuevos de Upstash Redis como los legacy de Vercel KV:
+ *   UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN  (nuevos)
+ *   KV_REST_API_URL / KV_REST_API_TOKEN                  (legacy)
  * Si falta alguna, usamos archivo local automáticamente.
  */
-const USE_VERCEL_KV = !!(
-  (import.meta.env.KV_URL as string | undefined) &&
-  (import.meta.env.KV_REST_API_URL as string | undefined) &&
-  (import.meta.env.KV_REST_API_TOKEN as string | undefined)
-);
+const REDIS_URL =
+  (import.meta.env.UPSTASH_REDIS_REST_URL as string | undefined) ||
+  (import.meta.env.KV_REST_API_URL as string | undefined);
 
-/** Cliente Vercel KV — lazy: solo se inicializa si estamos en modo Vercel KV */
-let kvClient: Awaited<typeof import('@vercel/kv')>['kv'] | null = null;
+const REDIS_TOKEN =
+  (import.meta.env.UPSTASH_REDIS_REST_TOKEN as string | undefined) ||
+  (import.meta.env.KV_REST_API_TOKEN as string | undefined);
+
+const USE_REDIS = !!(REDIS_URL && REDIS_TOKEN);
+
+/** Cliente Upstash Redis — lazy: solo se inicializa si estamos en modo Redis */
+let redisClient: import('@upstash/redis').Redis | null = null;
 
 /**
- * Retorna el cliente de Vercel KV, cargándolo bajo demanda.
- * Esto evita que @vercel/kv valide env vars al importar el módulo.
+ * Retorna el cliente de Upstash Redis, cargándolo bajo demanda.
+ * Esto evita que @upstash/redis valide env vars al importar el módulo.
  */
-async function getKv() {
-  if (!kvClient) {
-    kvClient = (await import('@vercel/kv')).kv;
+async function getRedis() {
+  if (!redisClient) {
+    const { Redis } = await import('@upstash/redis');
+    redisClient = new Redis({ url: REDIS_URL!, token: REDIS_TOKEN! });
   }
-  return kvClient;
+  return redisClient;
 }
 
-/** Archivo local para desarrollo — solo se usa cuando NO hay KV_URL */
+/** Archivo local para desarrollo — solo se usa cuando NO hay Redis configurado */
 const LOCAL_FILE = path.resolve(process.cwd(), 'data', 'subscriptions.json');
 
 // ---------------------------------------------------------------------------
@@ -108,9 +115,9 @@ export async function saveSubscription(
   if (!exists) {
     subscriptions.push(subscription);
 
-    if (USE_VERCEL_KV) {
-      const kv = await getKv();
-      await kv.set(SUBSCRIPTIONS_KEY, JSON.stringify(subscriptions));
+    if (USE_REDIS) {
+      const redis = await getRedis();
+      await redis.set(SUBSCRIPTIONS_KEY, subscriptions);
     } else {
       writeLocalSubscriptions(subscriptions);
     }
@@ -123,12 +130,11 @@ export async function saveSubscription(
  * @returns Array de suscripciones, vacío si no hay ninguna o si el almacén no responde.
  */
 export async function getAllSubscriptions(): Promise<PushSubscriptionJSON[]> {
-  if (USE_VERCEL_KV) {
+  if (USE_REDIS) {
     try {
-      const kv = await getKv();
-      const data = await kv.get<string>(SUBSCRIPTIONS_KEY);
-      if (!data) return [];
-      return typeof data === 'string' ? JSON.parse(data) : data;
+      const redis = await getRedis();
+      const data = await redis.get<PushSubscriptionJSON[]>(SUBSCRIPTIONS_KEY);
+      return data ?? [];
     } catch {
       return [];
     }
@@ -153,9 +159,9 @@ export async function deleteSubscription(endpoint: string): Promise<void> {
   const subscriptions = await getAllSubscriptions();
   const filtered = subscriptions.filter((s) => s.endpoint !== endpoint);
 
-  if (USE_VERCEL_KV) {
-    const kv = await getKv();
-    await kv.set(SUBSCRIPTIONS_KEY, JSON.stringify(filtered));
+  if (USE_REDIS) {
+    const redis = await getRedis();
+    await redis.set(SUBSCRIPTIONS_KEY, filtered);
   } else {
     writeLocalSubscriptions(filtered);
   }
