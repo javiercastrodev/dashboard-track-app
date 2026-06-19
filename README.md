@@ -168,7 +168,7 @@ El módulo `src/lib/kv.ts` auto-detecta: si `KV_URL` está definida usa `@vercel
 - **Node Version**: 20+
 - **Package Manager**: `pnpm` (Vercel lo detecta por el `pnpm-lock.yaml`)
 
-No requiere `vercel.json` — el adapter `@astrojs/vercel` configura todo automáticamente.
+El adapter `@astrojs/vercel` configura el build automáticamente. El repo incluye un `vercel.json` **únicamente** para forzar `Cache-Control: no-cache` sobre `/sw.js` y `/manifest.json` — sin eso, el CDN de Vercel cachea el Service Worker y los usuarios quedan pegados a una versión vieja sin posibilidad de forzarles el update (ver [Service Worker y caché](#service-worker-y-caché)).
 
 ### 2. Variables de entorno en Vercel
 
@@ -242,6 +242,7 @@ curl -X POST https://tudominio.vercel.app/api/notify \
 | Push no llega al browser    | `PUBLIC_VAPID_KEY` y `VAPID_PUBLIC_KEY` no coinciden | Ambas deben tener el mismo valor. Si se cambiaron, los usuarios deben desuscribirse y volver a suscribirse |
 | KV vacío o error 503        | KV_URL no está configurada              | Conectar storage KV en Vercel          |
 | Las landing no se actualizan| GH_PAT sin acceso o expirado           | Regenerar token en GitHub             |
+| Click en la notificación no abre nada | Service Worker viejo cacheado en el browser (aunque DevTools lo muestre como `activated`) | Dev Tools → Application → **Clear site data** → recargar → re-suscribirse. En producción lo previene el `vercel.json` |
 
 ## Consideraciones técnicas
 
@@ -249,6 +250,15 @@ curl -X POST https://tudominio.vercel.app/api/notify \
 
 - Chrome renueva silenciosamente los registros GCM. Si después de debuggear mucho las notificaciones dejan de llegar, hacer **clear site data** completo.
 - Al cambiar las llaves VAPID, los usuarios deben desuscribirse (click en "Desuscribirse") y volver a suscribirse.
+
+### Service Worker y caché
+
+El navegador cachea los **bytes** del Service Worker de forma agresiva. Un detalle crítico: que DevTools muestre el SW como `activated` con la URL correcta **NO garantiza que esté corriendo el código nuevo** — la URL es idéntica pero los bytes pueden ser viejos.
+
+- **Al editar `public/sw.js` en local**: si el comportamiento no cambia, el reflejo es Dev Tools → Application → **Clear site data** (o activar "Update on reload" en la pestaña Service Workers). Recién ahí corre la versión nueva.
+- **Truco de diagnóstico**: si al hacer click en una notificación el handler `notificationclick` no parece ejecutarse, agregar temporalmente un `postMessage` dentro del handler hacia la página. Si no llega ningún mensaje, el SW que corre tiene bytes viejos — no es un bug de lógica.
+- **En producción**: el `vercel.json` fuerza `Cache-Control: no-cache` sobre `/sw.js`, así el browser revalida el SW en cada carga y los usuarios reciben los cambios sin intervención manual.
+- **Gotcha de testing**: el navegador que abre el MCP de Chrome DevTools es una instancia separada de tu Chrome normal — cada uno tiene su propio registro de SW y su propia suscripción push en KV. `poll:notify` envía a ambas y el comportamiento puede divergir.
 
 ### Tailwind CSS v4
 

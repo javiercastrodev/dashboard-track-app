@@ -25,6 +25,8 @@
  */
 self.addEventListener('install', () => self.skipWaiting());
 
+self.addEventListener('notificationclose', () => {});
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
 });
@@ -33,8 +35,8 @@ self.addEventListener('push', (event) => {
   let title = '📡 Tracking Dashboard';
   const options = {
     body: '',
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     data: { url: '/' },
     tag: 'push-default',
     requireInteraction: true,
@@ -62,43 +64,29 @@ self.addEventListener('push', (event) => {
  * Evento: notificationclick
  *
  * Se dispara cuando el usuario hace clic en la notificación.
- * Cierra la notificación y abre (o enfoca) la URL que venía en el payload.
- * Si no hay URL específica, redirige al dashboard principal.
+ * Cierra la notificación y enfoca la pestaña existente con la URL del payload,
+ * o abre una nueva si no hay ninguna. Si no hay URL específica, redirige al
+ * dashboard principal.
+ *
+ * NOTA: client.navigate() fue removido intencionalmente — falla silenciosamente
+ * en clientes no controlados y evita que openWindow() se ejecute como fallback.
  */
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
+  const rawUrl = (event.notification.data && event.notification.data.url) || '/';
+  const targetUrl = new URL(rawUrl, self.location.origin).href;
+
   event.waitUntil(
-    (async () => {
-      try {
-        const base = self.location.origin;
-        const path = (event.notification.data && event.notification.data.url) || '/';
-        const targetUrl = new URL(path, base).href;
-
-        const windowClients = await clients.matchAll({
-          type: 'window',
-          includeUncontrolled: true,
-        });
-
-        // Buscar pestaña abierta en el mismo pathname
-        for (const client of windowClients) {
-          try {
-            const clientPath = new URL(client.url).pathname;
-            if (clientPath === new URL(targetUrl).pathname && 'focus' in client) {
-              await client.focus();
-              return;
-            }
-          } catch {
-            continue;
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url === targetUrl && 'focus' in client) {
+            return client.focus();
           }
         }
-
-        // Si no hay pestaña, abrir una nueva
-        await clients.openWindow(targetUrl);
-      } catch {
-        // Si todo falla, al menos abrir el dashboard
-        await clients.openWindow('/');
-      }
-    })()
+        return clients.openWindow(targetUrl);
+      })
   );
 });
