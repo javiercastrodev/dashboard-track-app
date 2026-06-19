@@ -85,10 +85,8 @@
     const button = document.getElementById('theme-toggle');
     if (!button) return;
 
-    /** Determina el tema inicial: localStorage → sistema → 'light' */
+    /** Determina el tema inicial: siempre usa la preferencia del dispositivo */
     function getInitialTheme(): 'dark' | 'light' {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'dark' || stored === 'light') return stored;
       return window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light';
@@ -123,10 +121,17 @@
       }
     });
 
-    // Escuchar cambios del sistema si no hay preferencia guardada
+    // Escuchar cambios del sistema (modo claro/oscuro automático)
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        applyTheme(e.matches ? 'dark' : 'light');
+      applyTheme(e.matches ? 'dark' : 'light');
+    });
+
+    // Fallback: re-sincronizar al volver a la pestaña (cubre casos donde
+    // el evento change no se disparó mientras la pestaña estaba en segundo plano)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {applyTheme(
+          window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        );
       }
     });
   })();
