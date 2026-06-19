@@ -23,9 +23,9 @@ import webpush from 'web-push';
 // ---------------------------------------------------------------------------
 
 const VAPID_SUBJECT =
-  process.env.VAPID_SUBJECT ?? 'mailto:admin@tracking-dashboard.dev';
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? '';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? '';
+  (import.meta.env.VAPID_SUBJECT as string | undefined) ?? 'mailto:javier@fixu.cl';
+const VAPID_PUBLIC_KEY = (import.meta.env.VAPID_PUBLIC_KEY as string) ?? '';
+const VAPID_PRIVATE_KEY = (import.meta.env.VAPID_PRIVATE_KEY as string) ?? '';
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -88,17 +88,24 @@ export async function sendPushNotifications(
     gone: [],
   };
 
+  console.log(`[push] Enviando a ${subscriptions.length} suscripciones`);
+  console.log(`[push] Payload (primeros 100 chars):`, payload.slice(0, 100));
+  console.log(`[push] VAPID configurado:`, !!VAPID_PUBLIC_KEY && !!VAPID_PRIVATE_KEY);
+
   const results = await Promise.allSettled(
     subscriptions.map(async (sub) => {
+      const maskedEndpoint = sub.endpoint.slice(0, 50) + '...';
       try {
         await webpush.sendNotification(
           sub as webpush.PushSubscription,
           payload,
-          { TTL: 300 }
+          { TTL: 300, urgency: 'high' }
         );
+        console.log(`[push] ✅ Éxito: ${maskedEndpoint}`);
         result.successful.push(sub.endpoint);
       } catch (err: unknown) {
         const wpErr = err as webpush.WebPushError;
+        console.log(`[push] ❌ Error en ${maskedEndpoint}: status=${wpErr.statusCode}, msg=${wpErr.message?.slice(0, 100)}`);
         if (wpErr.statusCode === 410 || wpErr.statusCode === 404) {
           result.gone.push(sub.endpoint);
         } else {
@@ -108,5 +115,6 @@ export async function sendPushNotifications(
     })
   );
 
+  console.log(`[push] Resultado: ${result.successful.length} exitosas, ${result.failed.length} fallidas, ${result.gone.length} expiradas`);
   return result;
 }

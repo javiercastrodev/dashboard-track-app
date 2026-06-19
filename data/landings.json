@@ -1,4 +1,20 @@
 {
-  "landings": [],
-  "lastUpdated": "2026-06-19T00:00:00.000Z"
+  "landings": [
+    {
+      "slug": "roaming",
+      "title": "Roaming",
+      "description": "",
+      "url": "https://github.com/HV-DEV-HTML/roaming",
+      "lastChecked": "2026-06-19T13:07:00.832Z",
+      "status": "active",
+      "github": "https://github.com/HV-DEV-HTML/roaming",
+      "lastDeploy": {
+        "commit": "799287a62a7c771134e8bd5ffbce91407655b338",
+        "branch": "main",
+        "timestamp": "2026-06-19T02:49:40.501Z",
+        "autor": "Javier Castro"
+      }
+    }
+  ],
+  "lastUpdated": "2026-06-19T13:07:01.431Z"
 }

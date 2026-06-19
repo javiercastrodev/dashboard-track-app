@@ -30,12 +30,12 @@ export const POST: APIRoute = async ({ request }) => {
   // 1. Validación del token de autorización
   // ---------------------------------------------------------------------------
   const authHeader = request.headers.get('Authorization');
-  const expectedSecret = process.env.NOTIFY_SECRET;
+  const expectedSecret = import.meta.env.NOTIFY_SECRET as string | undefined;
 
   if (!expectedSecret) {
     // Si no hay secret configurado en el entorno, rechazamos por seguridad.
     // Esto evita que el endpoint quede abierto accidentalmente.
-    return new Response(
+      return new Response(
       JSON.stringify({ error: 'No autorizado' }),
       {
         status: 401,
@@ -84,6 +84,8 @@ export const POST: APIRoute = async ({ request }) => {
     body: 'Se detectaron cambios en las landings registradas.',
     url: '/',
     icon: '/favicon.svg',
+    badge: '/favicon.svg',
+    tag: 'landing-update',
   });
 
   const result = await sendPushNotifications(subscriptions, payload);

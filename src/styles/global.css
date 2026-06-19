@@ -31,6 +31,13 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
+
+  --animate-shimmer: shimmer 2s ease-in-out infinite;
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
 }
 
 /* ================================================================
@@ -43,6 +50,28 @@ html {
 html,
 body {
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Efecto shimmer para skeletons — gradiente que se desplaza */
+.shimmer-block {
+  background: linear-gradient(
+    90deg,
+    #e5e7eb 0%,
+    #f3f4f6 40%,
+    #e5e7eb 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.dark .shimmer-block {
+  background: linear-gradient(
+    90deg,
+    #374151 0%,
+    #4b5563 40%,
+    #374151 80%
+  );
+  background-size: 200% 100%;
 }
 
 /* Respetar preferencias de movimiento reducido */

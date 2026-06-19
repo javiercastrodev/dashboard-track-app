@@ -178,7 +178,9 @@ const VAPID_PUBLIC_KEY = import.meta.env.PUBLIC_VAPID_KEY ?? '';
 
         var saved = await sendSubscriptionToServer(subscription);
         if (!saved) {
-          console.warn('No se pudo guardar la suscripción en el servidor');
+          alert('No se pudo guardar la suscripción en el servidor. Intentalo de nuevo más tarde.');
+          await subscription.unsubscribe();
+          return;
         }
 
         showState(subscribedState);
@@ -207,6 +209,15 @@ const VAPID_PUBLIC_KEY = import.meta.env.PUBLIC_VAPID_KEY ?? '';
       if (!isPushSupported()) {
         showState(unsupportedState);
         return;
+      }
+
+      // Registrar el SW siempre antes de pedir el estado
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+      } catch (e) {
+        // Si no se puede registrar, mostrar prompt igual (el usuario reintentará)
+        console.warn('SW registration failed, showing prompt:', e);
       }
 
       if (Notification.permission === 'granted') {

@@ -23,26 +23,42 @@
  * Si no se puede parsear el payload, muestra el texto crudo como fallback
  * para no perder la notificación.
  */
+self.addEventListener('install', () => self.skipWaiting());
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
 self.addEventListener('push', (event) => {
+  console.log('SW push event received:', event.data?.text()?.slice(0, 100));
+
   let data = {};
 
   if (event.data) {
     try {
       data = event.data.json();
+      console.log('SW parsed data:', JSON.stringify(data));
     } catch {
       data = { title: 'Notificación', body: event.data.text() };
     }
   }
 
-  const title = data.title || 'Tracking Dashboard';
+  const title = data.title || '📡 Tracking Dashboard';
   const options = {
     body: data.body || '',
-    icon: data.icon || '/favicon.svg',
-    badge: data.badge || '/favicon.svg',
-    data: data.url ? { url: data.url } : null,
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
+    data: { url: data.url || '/' },
+    tag: data.tag || 'push-default',
+    requireInteraction: true,
+    silent: false,
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => console.log('SW notification shown successfully'))
+      .catch((err) => console.error('SW showNotification error:', err))
+  );
 });
 
 /**

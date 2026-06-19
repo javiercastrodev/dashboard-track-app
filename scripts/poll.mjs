@@ -101,6 +101,8 @@ function getLandingUrl(repo) {
 // ---------------------------------------------------------------------------
 
 async function main() {
+  const forceNotify = process.argv.includes('--notify');
+
   // -------------------------------------------------------------------------
   // Validar entorno
   // -------------------------------------------------------------------------
@@ -190,7 +192,7 @@ async function main() {
         commit: deployConfig.commit,
         branch: deployConfig.branch || 'main',
         timestamp: deployConfig.timestamp,
-        autor: deployConfig.autor || 'Desconocido',
+        autor: deployConfig.author || deployConfig.autor || 'Desconocido',
       };
 
       const existing = landingsMap.get(slug);
@@ -254,20 +256,25 @@ async function main() {
     JSON.stringify(existingData.landings) !== JSON.stringify(nuevasLandings);
 
   if (!huboCambios) {
-    console.log('ℹ️  Sin cambios — landings.json no se reescribe');
-    return;
+    if (forceNotify) {
+      console.log('ℹ️  Sin cambios — omitiendo escritura de landings.json');
+      console.log('🔔 --notify activado — forzando envío de notificación igual');
+    } else {
+      console.log('ℹ️  Sin cambios — landings.json no se reescribe');
+      return;
+    }
+  } else {
+    // -------------------------------------------------------------------------
+    // 6. Escribir landings.json actualizado
+    // -------------------------------------------------------------------------
+    const output = {
+      landings: nuevasLandings,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    fs.writeFileSync(DATA_FILE, JSON.stringify(output, null, 2) + '\n');
+    console.log(`✅ landings.json actualizado — ${nuevasLandings.length} landings`);
   }
-
-  // -------------------------------------------------------------------------
-  // 6. Escribir landings.json actualizado
-  // -------------------------------------------------------------------------
-  const output = {
-    landings: nuevasLandings,
-    lastUpdated: new Date().toISOString(),
-  };
-
-  fs.writeFileSync(DATA_FILE, JSON.stringify(output, null, 2) + '\n');
-  console.log(`✅ landings.json actualizado — ${nuevasLandings.length} landings`);
 
   // -------------------------------------------------------------------------
   // 7. Enviar notificación (si las URLs están configuradas)

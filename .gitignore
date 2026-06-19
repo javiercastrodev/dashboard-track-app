@@ -7,3 +7,6 @@ dist/
 skills-lock.json
 pnpm-lock.yaml
 package-lock.json
+
+# Datos locales de desarrollo
+data/subscriptions.json

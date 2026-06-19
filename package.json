@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "poll": "node --env-file=.env scripts/poll.mjs",
+    "poll:notify": "node --env-file=.env scripts/poll.mjs --notify"
   },
   "dependencies": {
     "@astrojs/vercel": "^10.0.0",
