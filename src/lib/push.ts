@@ -88,10 +88,6 @@ export async function sendPushNotifications(
     gone: [],
   };
 
-  console.log(`[push] Enviando a ${subscriptions.length} suscripciones`);
-  console.log(`[push] Payload (primeros 100 chars):`, payload.slice(0, 100));
-  console.log(`[push] VAPID configurado:`, !!VAPID_PUBLIC_KEY && !!VAPID_PRIVATE_KEY);
-
   const results = await Promise.allSettled(
     subscriptions.map(async (sub) => {
       const maskedEndpoint = sub.endpoint.slice(0, 50) + '...';
