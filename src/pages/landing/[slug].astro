@@ -16,6 +16,7 @@ import "../../styles/global.css";
 import { ClientRouter } from 'astro:transitions';
 import LandingCard from '../../components/LandingCard.astro';
 import ThemeToggle from '../../components/ThemeToggle.astro';
+import ColorSchemeScript from '../../components/ColorSchemeScript.astro';
 import { getLandingBySlug } from '../../lib/landings';
 
 const { slug } = Astro.params;
@@ -34,6 +35,7 @@ const landing = slug ? await getLandingBySlug(slug) : null;
     <meta name="description" content="Detalle de landing - Claro Tracking Dashboard" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
+    <ColorSchemeScript />
     <ClientRouter />
   </head>
   <body

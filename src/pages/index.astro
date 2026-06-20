@@ -16,6 +16,7 @@ import "../styles/global.css";
 
 import LandingTable from '../components/LandingTable.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
+import ColorSchemeScript from '../components/ColorSchemeScript.astro';
 import { getAllLandings } from '../lib/landings';
 import { formatTimestamp } from '../lib/dates';
 
@@ -32,14 +33,7 @@ const now = formatTimestamp(new Date());
     <meta name="description" content="Dashboard de seguimiento de landings - Claro" />
     <link rel="icon" type="image/svg+xml" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
-    <!-- Sincronizar con el esquema de color del dispositivo antes del primer paint -->
-    <script is:inline>
-      (function() {
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script>
+    <ColorSchemeScript />
   </head>
   <body
     class="m-0 font-sans bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col"

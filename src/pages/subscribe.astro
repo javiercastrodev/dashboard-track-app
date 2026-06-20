@@ -19,6 +19,7 @@ import "../styles/global.css";
 import { ClientRouter } from 'astro:transitions';
 import SubscribeButton from '../components/SubscribeButton.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
+import ColorSchemeScript from '../components/ColorSchemeScript.astro';
 ---
 
 <!doctype html>
@@ -33,6 +34,7 @@ import ThemeToggle from '../components/ThemeToggle.astro';
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
+    <ColorSchemeScript />
     <ClientRouter />
   </head>
   <body

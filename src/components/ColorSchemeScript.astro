@@ -1,0 +1,26 @@
+---
+/**
+ * Previene el flash blanco (FOUC) al cargar en dark mode.
+ *
+ * Dos mecanismos combinados:
+ * 1. `color-scheme: light dark` — el browser aplica su tema oscuro nativo
+ *    antes de cargar cualquier recurso externo (CSS, JS).
+ * 2. Script inline síncrono — detecta `prefers-color-scheme`, agrega la clase
+ *    `dark` al <html> y setea `backgroundColor` con el color exacto de Tailwind
+ *    antes del primer paint, sin esperar el CSS bundle.
+ *
+ * Debe ir en el <head> de cada página, lo antes posible.
+ *
+ * @module components/ColorSchemeScript
+ */
+---
+<meta name="color-scheme" content="light dark" />
+<script is:inline>
+  (function () {
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (prefersDark) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.style.backgroundColor = '#030712'; // bg-gray-950
+    }
+  })();
+</script>
