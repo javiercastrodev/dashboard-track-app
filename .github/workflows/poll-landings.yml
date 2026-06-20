@@ -1,8 +1,10 @@
 # Workflow: Poll Landings
 #
-# Ejecuta el script de polling cada 15 minutos para detectar nuevos deploys
-# en los repositorios de la organización HV-DEV-HTML y actualizar el archivo
-# data/landings.json.
+# Ejecuta el script de polling cada hora (lunes a viernes) para detectar nuevos
+# deploys en los repositorios de la organización HV-DEV-HTML y actualizar Redis.
+#
+# Nota: el cron corre en UTC. Si el repo no recibe commits en 60 días, GitHub
+# deshabilita el schedule automáticamente — reactivar con workflow_dispatch.
 #
 # También se puede ejecutar manualmente via workflow_dispatch para forzar
 # una actualización inmediata (útil durante desarrollo o debugging).
@@ -23,10 +25,10 @@ name: Poll Landings
 
 on:
   # ---------------------------------------------------------------------------
-  # Trigger programado: cada 15 minutos
+  # Trigger programado: cada hora en punto, lunes a viernes (UTC)
   # ---------------------------------------------------------------------------
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 * * * 1-5'
 
   # ---------------------------------------------------------------------------
   # Trigger manual: permite ejecutar desde la UI de GitHub Actions
