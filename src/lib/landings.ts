@@ -1,8 +1,13 @@
 /**
  * Módulo de acceso a datos de landings.
  *
- * Fuente única de verdad: `data/landings.json`, un archivo JSON versionado en git.
- * El GitHub Action de polling lo actualiza automáticamente; acá solo lo leemos.
+ * Dos modos de operación (mismo patrón que `src/lib/kv.ts`):
+ * - **Producción (Vercel)**: lee desde Upstash Redis (key `landings_data`) cuando
+ *   las env vars `UPSTASH_REDIS_REST_URL` o `KV_REST_API_URL` están presentes. Así
+ *   el dashboard refleja cambios al instante, sin esperar un rebuild de Vercel.
+ * - **Local**: usa `data/landings.json` como respaldo, para desarrollar sin Redis.
+ *
+ * El GitHub Action de polling escribe la misma key/archivo; acá solo leemos.
  *
  * @module landings
  */
@@ -60,20 +65,47 @@ export interface LandingsData {
 // Lógica interna
 // ---------------------------------------------------------------------------
 
-/** Ruta absoluta al archivo JSON centralizado. Se resuelve contra el CWD del proceso (Vercel o local). */
-const DATA_FILE = path.resolve(process.cwd(), 'data', 'landings.json');
+/**
+ * Determinación del modo, igual que `src/lib/kv.ts`.
+ *
+ * Soporta tanto los nombres nuevos de Upstash Redis como los legacy de Vercel KV:
+ *   UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN  (nuevos)
+ *   KV_REST_API_URL / KV_REST_API_TOKEN                  (legacy)
+ * Si falta alguna, usamos el archivo local automáticamente.
+ */
+const REDIS_URL =
+  (import.meta.env.UPSTASH_REDIS_REST_URL as string | undefined) ||
+  (import.meta.env.KV_REST_API_URL as string | undefined);
+
+const REDIS_TOKEN =
+  (import.meta.env.UPSTASH_REDIS_REST_TOKEN as string | undefined) ||
+  (import.meta.env.KV_REST_API_TOKEN as string | undefined);
+
+const USE_REDIS = !!(REDIS_URL && REDIS_TOKEN);
+
+/** Cliente Upstash Redis — lazy: solo se inicializa si estamos en modo Redis */
+let redisClient: import('@upstash/redis').Redis | null = null;
 
 /**
- * Retorna todas las landings registradas.
- *
- * @returns {LandingsData} Objeto con el array de landings y timestamp de la última actualización.
- *
- * Edge cases:
- * - Archivo inexistente → array vacío (primera ejecución antes del primer poll).
- * - Archivo es un array plano → lo envuelve en el formato esperado por retrocompatibilidad.
- * - JSON malformado → lanza error que la API route convierte en 500.
+ * Retorna el cliente de Upstash Redis, cargándolo bajo demanda.
+ * Evita que @upstash/redis valide env vars al importar el módulo.
  */
-export function getAllLandings(): LandingsData {
+async function getRedis() {
+  if (!redisClient) {
+    const { Redis } = await import('@upstash/redis');
+    redisClient = new Redis({ url: REDIS_URL!, token: REDIS_TOKEN! });
+  }
+  return redisClient;
+}
+
+/** Clave única en Redis donde el poll guarda el objeto LandingsData completo. */
+const LANDINGS_KEY = 'landings_data';
+
+/** Ruta absoluta al archivo JSON local. Solo se usa cuando NO hay Redis configurado. */
+const DATA_FILE = path.resolve(process.cwd(), 'data', 'landings.json');
+
+/** Lee el LandingsData desde el archivo local (modo dev). */
+function readLocalLandings(): LandingsData {
   if (!fs.existsSync(DATA_FILE)) {
     return { landings: [], lastUpdated: new Date().toISOString() };
   }
@@ -93,6 +125,31 @@ export function getAllLandings(): LandingsData {
 }
 
 /**
+ * Retorna todas las landings registradas.
+ *
+ * @returns {Promise<LandingsData>} Objeto con el array de landings y timestamp de la última actualización.
+ *
+ * Edge cases:
+ * - Redis vacío o sin responder → array vacío (primera ejecución antes del primer poll).
+ * - Archivo inexistente (modo local) → array vacío.
+ * - Archivo es un array plano → lo envuelve en el formato esperado por retrocompatibilidad.
+ */
+export async function getAllLandings(): Promise<LandingsData> {
+  if (USE_REDIS) {
+    try {
+      const redis = await getRedis();
+      const data = await redis.get<LandingsData>(LANDINGS_KEY);
+      return data ?? { landings: [], lastUpdated: new Date().toISOString() };
+    } catch {
+      return { landings: [], lastUpdated: new Date().toISOString() };
+    }
+  }
+
+  // Modo local — archivo JSON
+  return readLocalLandings();
+}
+
+/**
  * Busca una landing por su slug.
  *
  * @param slug - Identificador único de la landing (ej: "prepago-movil").
@@ -100,7 +157,7 @@ export function getAllLandings(): LandingsData {
  *
  * Útil para la página de detalle `/landing/:slug`.
  */
-export function getLandingBySlug(slug: string): Landing | null {
-  const { landings } = getAllLandings();
+export async function getLandingBySlug(slug: string): Promise<Landing | null> {
+  const { landings } = await getAllLandings();
   return landings.find((l) => l.slug === slug) ?? null;
 }

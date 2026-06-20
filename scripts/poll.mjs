@@ -5,26 +5,33 @@
  *
  * Propósito:
  *   Enumera todos los repositorios de la org HV-DEV-HTML, busca el archivo
- *   `cms-deploy.json` en la raíz de cada uno, y sincroniza los datos en
- *   `data/landings.json`.
+ *   `cms-deploy.json` en la raíz de cada uno, y sincroniza los datos en el
+ *   almacén de landings (Upstash Redis en prod, `data/landings.json` en local).
+ *
+ * Persistencia dual-mode (mismo patrón que src/lib/landings.ts):
+ *   - Si hay credenciales de Redis (UPSTASH_REDIS_REST_URL/TOKEN) → key `landings_data`.
+ *   - Si no → archivo `data/landings.json` (desarrollo local).
+ *   Escribir en Redis hace que el dashboard refleje los cambios al instante,
+ *   sin necesidad de commitear el archivo ni esperar un rebuild de Vercel.
  *
  * Flujo:
  *   1. Conecta con GitHub API via Octokit (autenticado con GH_PAT).
  *   2. Obtiene TODOS los repos de la organización (con paginación).
  *   3. Para cada repo, intenta leer `cms-deploy.json` desde su rama default.
- *   4. Si existe: construye/actualiza la entrada correspondiente en landings.json.
+ *   4. Si existe: construye/actualiza la entrada correspondiente.
  *   5. Si NO existe: skipea el repo (no es una landing, o aún no tiene el archivo).
- *   6. Si hubo cambios (nuevo deploy o nueva landing): invoca POST /api/notify.
- *   7. Escribe landings.json solo si los datos cambiaron (idempotencia).
+ *   6. Escribe el almacén solo si los datos cambiaron (idempotencia).
+ *   7. Si hubo cambios (nuevo deploy o nueva landing): invoca POST /api/notify.
  *
  * Idempotencia:
- *   - Si ningún `cms-deploy.json` cambió su commit, landings.json NO se reescribe.
- *   - Esto evita commits vacíos en el repo del dashboard.
+ *   - Si ningún `cms-deploy.json` cambió su commit, el almacén NO se reescribe.
  *
  * Variables de entorno requeridas:
- *   GH_PAT       — Token de GitHub con scope `repo` (lectura de repos privados).
- *   NOTIFY_URL   — URL base de la app en Vercel (ej: https://tracking.vercel.app).
- *   NOTIFY_SECRET— Secret compartido con /api/notify.
+ *   GH_PAT                   — Token de GitHub con scope `repo` (lectura de repos privados).
+ *   NOTIFY_URL               — URL base de la app en Vercel (ej: https://tracking.vercel.app).
+ *   NOTIFY_SECRET            — Secret compartido con /api/notify.
+ *   UPSTASH_REDIS_REST_URL   — Endpoint REST de Upstash Redis (prod). Opcional en local.
+ *   UPSTASH_REDIS_REST_TOKEN — Token REST de Upstash Redis (prod). Opcional en local.
  *
  * @module scripts/poll
  */
@@ -41,6 +48,32 @@ import process from 'node:process';
 const ORG = 'HV-DEV-HTML';
 const DEPLOY_FILENAME = 'cms-deploy.json';
 const DATA_FILE = path.resolve(process.cwd(), 'data', 'landings.json');
+
+// ---------------------------------------------------------------------------
+// Persistencia: Upstash Redis (prod) o archivo local (dev)
+// ---------------------------------------------------------------------------
+// Mismo patrón dual-mode que src/lib/kv.ts y src/lib/landings.ts, pero acá
+// usamos process.env porque este script corre en Node plano (GitHub Action),
+// no en el bundle de Astro. Si no hay credenciales de Redis, cae al archivo.
+const REDIS_URL =
+  process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+const REDIS_TOKEN =
+  process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+const USE_REDIS = !!(REDIS_URL && REDIS_TOKEN);
+
+/** Clave única en Redis donde guardamos el objeto LandingsData completo. */
+const LANDINGS_KEY = 'landings_data';
+
+/** Cliente Upstash Redis — lazy: solo se inicializa si estamos en modo Redis. */
+let redisClient = null;
+
+async function getRedis() {
+  if (!redisClient) {
+    const { Redis } = await import('@upstash/redis');
+    redisClient = new Redis({ url: REDIS_URL, token: REDIS_TOKEN });
+  }
+  return redisClient;
+}
 
 // ---------------------------------------------------------------------------
 // Utilidades
@@ -148,7 +181,18 @@ async function main() {
   // Snapshot original para detectar cambios correctamente (deep clone)
   let originalData = { landings: [], lastUpdated: '' };
 
-  if (fs.existsSync(DATA_FILE)) {
+  if (USE_REDIS) {
+    try {
+      const redis = await getRedis();
+      const stored = await redis.get(LANDINGS_KEY);
+      if (stored) {
+        existingData = stored;
+        originalData = JSON.parse(JSON.stringify(existingData)); // deep clone
+      }
+    } catch (err) {
+      console.warn(`⚠️  No se pudo leer landings de Redis (${err.message}) — se empezará desde cero`);
+    }
+  } else if (fs.existsSync(DATA_FILE)) {
     try {
       existingData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
       originalData = JSON.parse(JSON.stringify(existingData)); // deep clone
@@ -331,8 +375,14 @@ async function main() {
       lastUpdated: new Date().toISOString(),
     };
 
-    fs.writeFileSync(DATA_FILE, JSON.stringify(output, null, 2) + '\n');
-    console.log(`✅ landings.json actualizado — ${nuevasLandings.length} landings`);
+    if (USE_REDIS) {
+      const redis = await getRedis();
+      await redis.set(LANDINGS_KEY, output);
+      console.log(`✅ landings actualizado en Redis — ${nuevasLandings.length} landings`);
+    } else {
+      fs.writeFileSync(DATA_FILE, JSON.stringify(output, null, 2) + '\n');
+      console.log(`✅ landings.json actualizado — ${nuevasLandings.length} landings`);
+    }
   }
 
   // -------------------------------------------------------------------------

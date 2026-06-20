@@ -8,11 +8,14 @@
 # una actualización inmediata (útil durante desarrollo o debugging).
 #
 # Secretos requeridos (settings → secrets and variables → actions):
-#   GH_PAT        — Personal Access Token con scope "repo" para leer la org
-#   NOTIFY_SECRET — Secret compartido con el endpoint /api/notify en Vercel
+#   GH_PAT                   — Personal Access Token con scope "repo" para leer la org
+#   NOTIFY_SECRET            — Secret compartido con el endpoint /api/notify en Vercel
+#   NOTIFY_URL               — URL base de la app deployada (ej: https://tracking.vercel.app)
+#   UPSTASH_REDIS_REST_URL   — Endpoint REST de Upstash Redis (mismo valor que en Vercel)
+#   UPSTASH_REDIS_REST_TOKEN — Token REST de Upstash Redis (mismo valor que en Vercel)
 #
-# Variables de entorno requeridas:
-#   NOTIFY_URL    — URL base de la app deployada (ej: https://tracking.vercel.app)
+# El script escribe las landings directamente en Redis: ya NO se commitea
+# data/landings.json, así que el dashboard ve los cambios sin rebuild de Vercel.
 #
 # @module .github/workflows/poll-landings
 
@@ -30,12 +33,6 @@ on:
   # ---------------------------------------------------------------------------
   workflow_dispatch:
 
-# ---------------------------------------------------------------------------
-# Permisos: necesitamos write en contents para commitear landings.json
-# ---------------------------------------------------------------------------
-permissions:
-  contents: write
-
 jobs:
   poll:
     name: Poll landings
@@ -48,15 +45,15 @@ jobs:
       GH_PAT: ${{ secrets.GH_PAT }}
       NOTIFY_URL: ${{ secrets.NOTIFY_URL }}
       NOTIFY_SECRET: ${{ secrets.NOTIFY_SECRET }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
     steps:
       # -----------------------------------------------------------------------
-      # 1. Checkout del repositorio (con el token para poder pushear después)
+      # 1. Checkout del repositorio (para tener scripts/ y package.json)
       # -----------------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       # -----------------------------------------------------------------------
       # 2. Setup Node.js 22 LTS
@@ -77,28 +74,9 @@ jobs:
       # -----------------------------------------------------------------------
       # 4. Ejecutar el script de polling
       # -----------------------------------------------------------------------
+      # El script escribe los cambios directamente en Upstash Redis. No hay
+      # paso de commit/push: el dashboard lee de Redis y ve los cambios al
+      # instante, sin disparar un rebuild de Vercel.
       - name: Run poll script
         id: poll
         run: node scripts/poll.mjs
-
-      # -----------------------------------------------------------------------
-      # 5. Commitear y pushear si landings.json cambió
-      # -----------------------------------------------------------------------
-      # El script de polling solo reescribe landings.json cuando hay cambios
-      # reales. Si no cambió nada, git diff no encuentra diferencias y este
-      # paso se skipea automáticamente.
-      - name: Commit and push if changed
-        run: |
-          if [[ -z "$(git status --porcelain data/landings.json)" ]]; then
-            echo "ℹ️  Sin cambios en landings.json — no se commitea nada"
-            exit 0
-          fi
-
-          git config user.name "tracking-bot"
-          git config user.email "bot@tracking.claro.com"
-
-          git add data/landings.json
-          git commit -m "chore: actualizar landings [skip ci]"
-          git push
-
-          echo "✅ landings.json commiteado y pusheado"

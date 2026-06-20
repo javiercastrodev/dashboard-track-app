@@ -15,7 +15,7 @@ import { getAllLandings } from '../../lib/landings';
 
 export const GET: APIRoute = async () => {
   try {
-    const data = getAllLandings();
+    const data = await getAllLandings();
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

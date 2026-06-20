@@ -19,7 +19,7 @@ import ThemeToggle from '../components/ThemeToggle.astro';
 import { getAllLandings } from '../lib/landings';
 import { formatTimestamp } from '../lib/dates';
 
-const data = getAllLandings();
+const data = await getAllLandings();
 const now = formatTimestamp(new Date());
 ---
 

@@ -20,7 +20,7 @@ import { getLandingBySlug } from '../../lib/landings';
 
 const { slug } = Astro.params;
 
-const landing = slug ? getLandingBySlug(slug) : null;
+const landing = slug ? await getLandingBySlug(slug) : null;
 ---
 
 <!doctype html>
