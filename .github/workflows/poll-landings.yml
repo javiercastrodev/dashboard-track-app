@@ -25,10 +25,12 @@ name: Poll Landings
 
 on:
   # ---------------------------------------------------------------------------
-  # Trigger programado: cada hora en punto, lunes a viernes (UTC)
+  # Trigger programado: cada hora al minuto :27, lunes a viernes (UTC)
+  # Evitamos el minuto :00 porque GitHub droppea jobs durante el pico de carga
+  # del inicio de hora (documentado en GitHub Actions docs).
   # ---------------------------------------------------------------------------
   schedule:
-    - cron: '0 * * * 1-5'
+    - cron: '27 * * * 1-5'
 
   # ---------------------------------------------------------------------------
   # Trigger manual: permite ejecutar desde la UI de GitHub Actions
