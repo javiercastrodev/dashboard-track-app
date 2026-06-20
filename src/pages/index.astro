@@ -17,9 +17,10 @@ import "../styles/global.css";
 import LandingTable from '../components/LandingTable.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
 import { getAllLandings } from '../lib/landings';
+import { formatTimestamp } from '../lib/dates';
 
 const data = getAllLandings();
-const now = new Date().toLocaleString('es-PE');
+const now = formatTimestamp(new Date());
 ---
 
 <!doctype html>
