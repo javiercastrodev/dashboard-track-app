@@ -46,6 +46,14 @@ export function formatDeployDate(input: string | Date): string {
 }
 
 /**
+ * Retorna los días completos transcurridos desde el input hasta ahora.
+ */
+export function daysSince(input: string | Date): number {
+  const date = typeof input === 'string' ? new Date(input) : input;
+  return Math.floor((Date.now() - date.getTime()) / 86_400_000);
+}
+
+/**
  * Devuelve el tiempo transcurrido desde el input en formato relativo legible.
  * Para fechas >= 7 días cae en formatDeployDate como fallback.
  *

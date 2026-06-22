@@ -26,7 +26,9 @@
  */
 
 import type { Landing } from '../lib/landings';
-import { formatTimestamp, formatDeployDate, formatRelativeTime } from '../lib/dates';
+import { formatTimestamp, formatDeployDate, formatRelativeTime, daysSince } from '../lib/dates';
+
+const INACTIVITY_DAYS = 14;
 
 export interface Props {
   landings: Landing[];
@@ -167,13 +169,20 @@ function statusClass(status: string | undefined): string {
                       </span>
                     )}
                   </span>
-                  <time
-                    datetime={typeof landing.lastDeploy.timestamp === 'string' ? landing.lastDeploy.timestamp : landing.lastDeploy.timestamp.toISOString()}
-                    title={formatDeployDate(landing.lastDeploy.timestamp)}
-                    class="text-sm text-gray-500 dark:text-gray-400 cursor-default"
-                  >
-                    {formatRelativeTime(landing.lastDeploy.timestamp)}
-                  </time>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <time
+                      datetime={typeof landing.lastDeploy.timestamp === 'string' ? landing.lastDeploy.timestamp : landing.lastDeploy.timestamp.toISOString()}
+                      title={formatDeployDate(landing.lastDeploy.timestamp)}
+                      class="text-sm text-gray-500 dark:text-gray-400 cursor-default"
+                    >
+                      {formatRelativeTime(landing.lastDeploy.timestamp)}
+                    </time>
+                    {daysSince(landing.lastDeploy.timestamp) >= INACTIVITY_DAYS && (
+                      <span class="text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                        sin actividad {daysSince(landing.lastDeploy.timestamp)}d
+                      </span>
+                    )}
+                  </div>
                 </>
               ) : (
                 <span class="text-sm text-gray-400 dark:text-gray-500 italic">Sin deploy registrado</span>
