@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import LandingTable from '../components/LandingTable.astro';
+import KpiCards from '../components/KpiCards.astro';
 import { getAllLandings } from '../lib/landings';
 import { formatTimestamp } from '../lib/dates';
 
@@ -14,6 +15,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
   description="Dashboard de seguimiento de landings - Claro"
   favicon="/icon-192.png"
 >
+  <KpiCards landings={data.landings} />
   <LandingTable
     landings={data.landings}
     lastUpdated={data.lastUpdated}

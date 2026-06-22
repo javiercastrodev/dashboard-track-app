@@ -1,0 +1,63 @@
+---
+import type { Landing } from '../lib/landings';
+import { daysSince } from '../lib/dates';
+
+export interface Props {
+  landings: Landing[];
+}
+
+const { landings } = Astro.props;
+
+const active = landings.filter((l) => l.status === 'active').length;
+const inactive = landings.filter((l) => l.status === 'inactive').length;
+const deployedToday = landings.filter(
+  (l) => l.lastDeploy && daysSince(l.lastDeploy.timestamp) === 0
+).length;
+const stale = landings.filter(
+  (l) => !l.lastDeploy || daysSince(l.lastDeploy.timestamp) >= 7
+).length;
+
+const cards = [
+  {
+    value: active,
+    label: 'activas',
+    color: 'text-green-600 dark:text-green-400',
+    bg: 'bg-green-50 dark:bg-green-900/20',
+    border: 'border-green-200 dark:border-green-800',
+  },
+  {
+    value: inactive,
+    label: 'inactivas',
+    color: 'text-gray-500 dark:text-gray-400',
+    bg: 'bg-gray-50 dark:bg-gray-800/50',
+    border: 'border-gray-200 dark:border-gray-700',
+  },
+  {
+    value: deployedToday,
+    label: 'deployadas hoy',
+    color: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
+    border: 'border-blue-200 dark:border-blue-800',
+  },
+  {
+    value: stale,
+    label: 'sin deploy +7d',
+    color: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+    border: 'border-amber-200 dark:border-amber-800',
+  },
+];
+---
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  {cards.map((card) => (
+    <div class={`${card.bg} ${card.border} border rounded-xl px-4 py-3 flex flex-col gap-0.5 transition-colors duration-300`}>
+      <span class={`text-3xl font-bold leading-none ${card.color}`}>
+        {card.value}
+      </span>
+      <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+        {card.label}
+      </span>
+    </div>
+  ))}
+</div>
