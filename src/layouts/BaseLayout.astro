@@ -1,0 +1,83 @@
+---
+import ThemeToggle from '../components/ThemeToggle.astro';
+import ColorSchemeScript from '../components/ColorSchemeScript.astro';
+import { ClientRouter } from 'astro:transitions';
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+  favicon?: string;
+  clientRouter?: boolean;
+}
+
+const {
+  title,
+  description,
+  favicon = '/favicon.svg',
+  clientRouter = false,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="es" class="motion-safe:scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+    <link rel="manifest" href="/manifest.json" />
+    <ColorSchemeScript />
+    {clientRouter && <ClientRouter />}
+  </head>
+  <body
+    class="m-0 font-sans bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col"
+  >
+    <header
+      class="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 transition-colors duration-300"
+    >
+      <div class="w-full max-w-5xl mx-auto px-5">
+        <div class="flex items-center justify-between py-3">
+          <a href="/" class="flex items-center gap-2 no-underline text-inherit">
+            <span class="text-2xl leading-none">📡</span>
+            <span class="text-lg font-bold text-gray-900 dark:text-white transition-colors duration-300">
+              Tracking Dashboard
+            </span>
+          </a>
+          <div class="flex items-center gap-1">
+            <nav class="flex gap-0.5" aria-label="Navegación principal">
+              <a
+                href="/"
+                class="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 no-underline rounded-md transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+              >
+                Dashboard
+              </a>
+              <a
+                href="/subscribe"
+                class="px-3 py-2 text-sm font-medium text-white no-underline rounded-md transition-all duration-200 hover:bg-indigo-900 dark:hover:bg-gray-600 dark:hover:text-white bg-indigo-600 dark:bg-blue-100/80 dark:text-gray-900"
+              >
+                Suscripción
+              </a>
+            </nav>
+            <ThemeToggle />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="w-full max-w-5xl mx-auto px-5 flex-1 pt-5 pb-8 animate-fade-in">
+      <slot />
+    </main>
+
+    <footer
+      class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3 transition-colors duration-300"
+    >
+      <div class="w-full max-w-5xl mx-auto px-5">
+        <p class="m-0 text-xs text-gray-400 dark:text-gray-500">
+          <slot name="footer-content">Tracking Dashboard — Claro</slot>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
