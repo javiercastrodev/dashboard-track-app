@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import LandingTable from '../components/LandingTable.astro';
 import KpiCards from '../components/KpiCards.astro';
+import LandingFilter from '../components/LandingFilter.astro';
 import { getAllLandings } from '../lib/landings';
 import { formatTimestamp } from '../lib/dates';
 
@@ -16,6 +17,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
   favicon="/icon-192.png"
 >
   <KpiCards landings={data.landings} />
+  <LandingFilter />
   <LandingTable
     landings={data.landings}
     lastUpdated={data.lastUpdated}

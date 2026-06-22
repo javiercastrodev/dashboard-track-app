@@ -1,0 +1,109 @@
+---
+// Client-side filter bar — no props needed.
+// Targets [data-landing-card] elements rendered by LandingTable.
+---
+
+<div class="flex flex-col sm:flex-row gap-3 mb-5">
+  <div class="relative flex-1">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none select-none text-sm">
+      🔍
+    </span>
+    <input
+      id="landing-search"
+      type="search"
+      placeholder="Buscar landing..."
+      autocomplete="off"
+      class="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    />
+  </div>
+
+  <div class="flex gap-1.5" role="group" aria-label="Filtrar por estado">
+    <button
+      data-status-filter="all"
+      class="px-3 py-2 text-xs font-semibold rounded-lg border transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 filter-active bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
+    >
+      Todas
+    </button>
+    <button
+      data-status-filter="active"
+      class="px-3 py-2 text-xs font-semibold rounded-lg border transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500"
+    >
+      Activas
+    </button>
+    <button
+      data-status-filter="inactive"
+      class="px-3 py-2 text-xs font-semibold rounded-lg border transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500"
+    >
+      Inactivas
+    </button>
+  </div>
+</div>
+
+<p id="landing-no-results" class="hidden text-center py-10 text-gray-500 dark:text-gray-400 text-sm">
+  Sin resultados para "<span id="landing-no-results-query"></span>"
+</p>
+
+<script>
+  (function () {
+    var searchInput = document.getElementById('landing-search');
+    var noResults = document.getElementById('landing-no-results');
+    var noResultsQuery = document.getElementById('landing-no-results-query');
+    var statusBtns = document.querySelectorAll('[data-status-filter]');
+
+    var activeStatus = 'all';
+
+    var ACTIVE_CLASSES = [
+      'bg-gray-900', 'dark:bg-gray-100', 'text-white', 'dark:text-gray-900',
+      'border-gray-900', 'dark:border-gray-100',
+    ];
+    var INACTIVE_CLASSES = [
+      'bg-white', 'dark:bg-gray-900', 'text-gray-600', 'dark:text-gray-400',
+      'border-gray-200', 'dark:border-gray-700',
+      'hover:border-gray-400', 'dark:hover:border-gray-500',
+    ];
+
+    function getCards() {
+      return Array.from(document.querySelectorAll('[data-landing-card]'));
+    }
+
+    function setActiveBtn(btn) {
+      statusBtns.forEach(function (b) {
+        ACTIVE_CLASSES.forEach(function (c) { b.classList.remove(c); });
+        INACTIVE_CLASSES.forEach(function (c) { b.classList.add(c); });
+      });
+      INACTIVE_CLASSES.forEach(function (c) { btn.classList.remove(c); });
+      ACTIVE_CLASSES.forEach(function (c) { btn.classList.add(c); });
+    }
+
+    function applyFilter() {
+      var query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      var cards = getCards();
+      var visible = 0;
+
+      cards.forEach(function (card) {
+        var title = (card.dataset.title || '').toLowerCase();
+        var status = card.dataset.status || '';
+        var matchesSearch = !query || title.includes(query);
+        var matchesStatus = activeStatus === 'all' || status === activeStatus;
+        var show = matchesSearch && matchesStatus;
+        card.classList.toggle('hidden', !show);
+        if (show) visible++;
+      });
+
+      if (noResults) noResults.classList.toggle('hidden', visible > 0);
+      if (noResultsQuery) noResultsQuery.textContent = query || activeStatus;
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', applyFilter);
+    }
+
+    statusBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        activeStatus = btn.dataset.statusFilter || 'all';
+        setActiveBtn(btn);
+        applyFilter();
+      });
+    });
+  })();
+</script>

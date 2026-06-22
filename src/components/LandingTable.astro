@@ -137,6 +137,9 @@ function statusClass(status: string | undefined): string {
           href={`/landing/${landing.slug}`}
           class="no-underline text-inherit block group"
           title={`Ver detalle de ${landing.title}`}
+          data-landing-card
+          data-title={landing.title.toLowerCase()}
+          data-status={landing.status ?? ''}
         >
           <article class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 flex flex-col gap-4 transition-all duration-200 group-hover:border-blue-500 dark:group-hover:border-blue-400 group-hover:shadow-lg group-hover:shadow-blue-500/10 dark:group-hover:shadow-blue-500/5 h-full">
             <header class="flex items-center justify-between gap-3">
