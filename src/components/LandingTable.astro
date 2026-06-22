@@ -26,7 +26,7 @@
  */
 
 import type { Landing } from '../lib/landings';
-import { formatTimestamp, formatDeployDate } from '../lib/dates';
+import { formatTimestamp, formatDeployDate, formatRelativeTime } from '../lib/dates';
 
 export interface Props {
   landings: Landing[];
@@ -167,9 +167,13 @@ function statusClass(status: string | undefined): string {
                       </span>
                     )}
                   </span>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">
-                    {formatDeployDate(landing.lastDeploy.timestamp)}
-                  </span>
+                  <time
+                    datetime={typeof landing.lastDeploy.timestamp === 'string' ? landing.lastDeploy.timestamp : landing.lastDeploy.timestamp.toISOString()}
+                    title={formatDeployDate(landing.lastDeploy.timestamp)}
+                    class="text-sm text-gray-500 dark:text-gray-400 cursor-default"
+                  >
+                    {formatRelativeTime(landing.lastDeploy.timestamp)}
+                  </time>
                 </>
               ) : (
                 <span class="text-sm text-gray-400 dark:text-gray-500 italic">Sin deploy registrado</span>

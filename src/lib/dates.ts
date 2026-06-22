@@ -44,3 +44,28 @@ export function formatDeployDate(input: string | Date): string {
     minute: '2-digit',
   });
 }
+
+/**
+ * Devuelve el tiempo transcurrido desde el input en formato relativo legible.
+ * Para fechas >= 7 días cae en formatDeployDate como fallback.
+ *
+ * Ej: "hace 2 horas", "hace 3 días", "ayer"
+ */
+export function formatRelativeTime(input: string | Date): string {
+  try {
+    const date = typeof input === 'string' ? new Date(input) : input;
+    const diffMs = Date.now() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60_000);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHr / 24);
+
+    if (diffMin < 1) return 'hace un momento';
+    if (diffMin < 60) return `hace ${diffMin} ${diffMin === 1 ? 'minuto' : 'minutos'}`;
+    if (diffHr < 24) return `hace ${diffHr} ${diffHr === 1 ? 'hora' : 'horas'}`;
+    if (diffDays === 1) return 'ayer';
+    if (diffDays < 7) return `hace ${diffDays} días`;
+    return formatDeployDate(date);
+  } catch {
+    return formatDeployDate(input);
+  }
+}
