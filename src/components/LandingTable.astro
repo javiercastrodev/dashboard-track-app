@@ -171,7 +171,7 @@ function statusClass(status: string | undefined): string {
                   </span>
                   <div class="flex items-center gap-2 flex-wrap">
                     <time
-                      datetime={typeof landing.lastDeploy.timestamp === 'string' ? landing.lastDeploy.timestamp : landing.lastDeploy.timestamp.toISOString()}
+                      datetime={landing.lastDeploy.timestamp}
                       title={formatDeployDate(landing.lastDeploy.timestamp)}
                       class="text-sm text-gray-500 dark:text-gray-400 cursor-default"
                     >
