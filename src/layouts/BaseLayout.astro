@@ -1,6 +1,7 @@
 ---
 import ThemeToggle from '../components/ThemeToggle.astro';
 import ColorSchemeScript from '../components/ColorSchemeScript.astro';
+import NotificationModal from '../components/NotificationModal.astro';
 import { ClientRouter } from 'astro:transitions';
 import "../styles/global.css";
 
@@ -57,7 +58,7 @@ const {
                 href="/subscribe"
                 class="px-3 py-2 text-sm font-medium text-white no-underline rounded-md transition-all duration-200 hover:bg-indigo-900 dark:hover:bg-gray-600 dark:hover:text-white bg-indigo-600 dark:bg-blue-100/80 dark:text-gray-900"
               >
-                Suscripción
+                Notificaciones
               </a>
             </nav>
             <ThemeToggle />
@@ -79,5 +80,6 @@ const {
         </p>
       </div>
     </footer>
+    <NotificationModal />
   </body>
 </html>
