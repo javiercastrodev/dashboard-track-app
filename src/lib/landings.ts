@@ -53,6 +53,8 @@ export interface Landing {
   basecamp?: string;
   /** Información del último deploy (null si nunca se deployó) */
   lastDeploy?: DeployInfo | null;
+  /** Historial de los últimos deploys (máx. 20), el más reciente primero */
+  deployHistory?: DeployInfo[];
 }
 
 /** Estructura completa del archivo landings.json */

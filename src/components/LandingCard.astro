@@ -18,7 +18,7 @@
  */
 
 import type { Landing } from '../lib/landings';
-import { formatTimestamp } from '../lib/dates';
+import { formatTimestamp, formatRelativeTime, formatDeployDate } from '../lib/dates';
 
 export interface Props {
   landing: Landing;
@@ -129,6 +129,52 @@ const badge = statusBadge(landing.status);
       <p class="m-0 text-gray-400 dark:text-gray-500 italic text-sm">Sin deploy registrado</p>
     )}
   </section>
+
+  <!-- ============================================================
+       Sección: Historial de deploys
+       ============================================================ -->
+  {landing.deployHistory && landing.deployHistory.length > 1 && (
+    <section class="border-t border-gray-100 dark:border-gray-800 pt-5">
+      <h2 class="text-base font-bold text-gray-700 dark:text-gray-300 m-0 mb-4">
+        Historial de deploys
+        <span class="text-xs font-normal text-gray-400 dark:text-gray-500 ml-1.5">
+          ({landing.deployHistory.length})
+        </span>
+      </h2>
+      <ol class="relative ml-3 flex flex-col">
+        {landing.deployHistory.map((deploy, i) => (
+          <li class="relative pl-5 pb-4 last:pb-0 border-l border-gray-200 dark:border-gray-700 last:border-transparent">
+            <span class={`absolute -left-[5px] top-[5px] w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 ${i === 0 ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-300 dark:bg-gray-600'}`} />
+            <div class="flex flex-col gap-0.5 text-sm">
+              <div class="flex items-center gap-2 flex-wrap">
+                <code class="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-900 dark:text-gray-100">
+                  {shortCommit(deploy.commit)}
+                </code>
+                <span class="text-gray-500 dark:text-gray-400 text-xs">{deploy.autor}</span>
+                {i === 0 && (
+                  <span class="text-xs font-medium px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400">
+                    actual
+                  </span>
+                )}
+              </div>
+              {deploy.message && (
+                <span class="text-gray-400 dark:text-gray-500 text-xs italic truncate">
+                  "{deploy.message}"
+                </span>
+              )}
+              <time
+                datetime={deploy.timestamp}
+                title={formatDeployDate(deploy.timestamp)}
+                class="text-xs text-gray-400 dark:text-gray-500 cursor-default"
+              >
+                {formatRelativeTime(deploy.timestamp)}
+              </time>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
 
   <!-- ============================================================
        Sección: Enlaces relacionados

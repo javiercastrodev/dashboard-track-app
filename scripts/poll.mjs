@@ -270,6 +270,7 @@ async function main() {
 
         // Solo actualizar lastDeploy si el commit cambió
         if (existing.lastDeploy?.commit !== deployEntry.commit) {
+          const oldDeploy = existing.lastDeploy;
           existing.lastDeploy = deployEntry;
           existing.lastChecked = new Date().toISOString();
           console.log(`🔄 ${slug}: nuevo deploy detectado (${deployEntry.commit.slice(0, 7)})`);
@@ -285,6 +286,9 @@ async function main() {
           } catch {
             // Si falla (rate limit, SHA inválido, etc), seguimos sin mensaje
           }
+          // Actualizar historial: migrar lastDeploy anterior si no hay historia previa
+          const baseHistory = existing.deployHistory ?? (oldDeploy ? [oldDeploy] : []);
+          existing.deployHistory = [deployEntry, ...baseHistory].slice(0, 20);
         } else {
           if (metadataCambio) {
             console.log(`📝 ${slug}: metadatos actualizados`);
@@ -308,6 +312,7 @@ async function main() {
           mosaic: deployConfig.mosaic || null,
           cmsUrl: deployConfig.cmsUrl || null,
           lastDeploy: deployEntry,
+          deployHistory: [deployEntry],
         });
         console.log(`✨ ${slug}: nueva landing agregada`);
         landingsActualizadas.push({ slug, title, autor: deployEntry.autor, commit: deployEntry.commit });
