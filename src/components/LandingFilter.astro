@@ -45,10 +45,10 @@
 
 <script>
   (function () {
-    var searchInput = document.getElementById('landing-search');
+    var searchInput = document.getElementById('landing-search') as HTMLButtonElement;
     var noResults = document.getElementById('landing-no-results');
     var noResultsQuery = document.getElementById('landing-no-results-query');
-    var statusBtns = document.querySelectorAll('[data-status-filter]');
+    var statusBtns = document.querySelectorAll<HTMLElement>('[data-status-filter]');
 
     var activeStatus = 'all';
 
@@ -63,7 +63,7 @@
     ];
 
     function getCards() {
-      return Array.from(document.querySelectorAll('[data-landing-card]'));
+      return Array.from(document.querySelectorAll<HTMLElement>('[data-landing-card]'));
     }
 
     function setActiveBtn(btn) {
