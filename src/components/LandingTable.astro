@@ -10,7 +10,7 @@
  * - Loading: se usa cuando `loading=true`. Muestra 3 skeleton cards con animación.
  * - Empty: landings array vacío y loading=false. Muestra mensaje informativo.
  * - Error: mensaje de error con botón de reintento (requiere page reload).
- * - Happy: grilla de tarjetas compactas con orden alfabético por título.
+ * - Happy: grilla de tarjetas compactas ordenadas por último deploy (más reciente primero).
  *
  * @prop {Landing[]} landings - Array de landings a mostrar.
  * @prop {string} lastUpdated - Timestamp ISO de la última actualización.
@@ -39,10 +39,12 @@ export interface Props {
 
 const { landings, lastUpdated, loading = false, error = null } = Astro.props;
 
-// Orden alfabético por título, case-insensitive
-const sortedLandings = [...landings].sort((a, b) =>
-  a.title.localeCompare(b.title, 'es', { sensitivity: 'base' })
-);
+// Orden por último deploy, más reciente primero. Sin deploy → al final.
+const sortedLandings = [...landings].sort((a, b) => {
+  const aTime = a.lastDeploy?.timestamp ? new Date(a.lastDeploy.timestamp).getTime() : -Infinity;
+  const bTime = b.lastDeploy?.timestamp ? new Date(b.lastDeploy.timestamp).getTime() : -Infinity;
+  return bTime - aTime;
+});
 
 /**
  * Retorna la clase CSS para el badge de estado.
