@@ -40,6 +40,7 @@ export interface Landing {
   slug: string;
   title: string;
   description?: string;
+  /** URL pública de la landing, tomada de publicUrl en cms-deploy.json (fallback: homepage/URL del repo) */
   url: string;
   lastChecked?: string;
   status?: string;
@@ -47,8 +48,6 @@ export interface Landing {
   github?: string;
   /** URL al dashboard de Mosaic (CMS) */
   mosaic?: string;
-  /** URL directa al CMS */
-  cmsUrl?: string;
   /** URL al proyecto en Basecamp */
   basecamp?: string;
   /** Información del último deploy (null si nunca se deployó) */

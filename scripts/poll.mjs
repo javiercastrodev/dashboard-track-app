@@ -116,11 +116,12 @@ function humanizeTitle(slug) {
 }
 
 /**
- * Obtiene la URL de producción de una landing.
+ * Obtiene la URL de producción de una landing como fallback.
  *
- * Intenta usar el homepage del repo (si está configurado en GitHub).
- * Si no, usa la URL del repo como fallback para que el dashboard
- * al menos tenga un link funcional.
+ * Se usa solo cuando cms-deploy.json todavía no trae `publicUrl` (plantilla
+ * vieja o repo aún no redeployado). Intenta el homepage del repo y, si no
+ * está configurado, cae a la URL del repo para que el dashboard al menos
+ * tenga un link funcional.
  *
  * @param {object} repo - Objeto del repositorio desde la API de GitHub.
  * @returns {string} URL de la landing.
@@ -253,19 +254,19 @@ async function main() {
         let metadataCambio = false;
         const nuevoBasecamp = deployConfig.basecamp || deployConfig.basecampUrl || null;
         const nuevoMosaic = deployConfig.mosaic || null;
-        const nuevoCmsUrl = deployConfig.cmsUrl || null;
+        const nuevaUrl = deployConfig.publicUrl || existing.url;
         const nuevaDescripcion = deployConfig.description || '';
 
         if (existing.basecamp !== nuevoBasecamp ||
             existing.mosaic !== nuevoMosaic ||
-            existing.cmsUrl !== nuevoCmsUrl ||
+            existing.url !== nuevaUrl ||
             existing.description !== nuevaDescripcion) {
           metadataCambio = true;
         }
 
         existing.basecamp = nuevoBasecamp;
         existing.mosaic = nuevoMosaic;
-        existing.cmsUrl = nuevoCmsUrl;
+        existing.url = nuevaUrl;
         existing.description = nuevaDescripcion;
 
         // Solo actualizar lastDeploy si el commit cambió
@@ -304,13 +305,12 @@ async function main() {
           slug,
           title,
           description: deployConfig.description || '',
-          url: getLandingUrl(repo),
+          url: deployConfig.publicUrl || getLandingUrl(repo),
           lastChecked: new Date().toISOString(),
           status: 'active',
           github: repo.html_url,
           basecamp: deployConfig.basecamp || deployConfig.basecampUrl || null,
           mosaic: deployConfig.mosaic || null,
-          cmsUrl: deployConfig.cmsUrl || null,
           lastDeploy: deployEntry,
           deployHistory: [deployEntry],
         });
