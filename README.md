@@ -115,6 +115,14 @@ El servidor envía una notificación a todos los suscriptores. Verifica que el S
 | `POST /api/notify`      | Envía push a todos los suscriptores (protegido)      |
 | `GET /api/test-notification` | Envía push de prueba                            |
 
+### Dashboard (UI)
+
+La ruta `/` renderiza:
+
+- **KPI cards** (`KpiCards.astro`): activas, inactivas, deployadas hoy, sin deploy +7 días
+- **Filtro** (`LandingFilter.astro`): búsqueda por título + toggle de estado (Todas/Activas/Inactivas), client-side sobre `[data-landing-card]`
+- **Historial de deploys**: cada landing guarda hasta 20 deploys (`deployHistory`, más reciente primero), visible en el detalle de la card
+
 ### API de notificaciones
 
 `POST /api/notify` requiere header `Authorization: Bearer <NOTIFY_SECRET>`. Flujo:
@@ -149,6 +157,8 @@ Las variables de entorno se pasan como secrets de GitHub Action:
 | `NOTIFY_URL`     | Variable del workflow  |
 | `NOTIFY_SECRET`  | Secret del repo        |
 | `GH_PAT`         | Secret del repo        |
+
+> La URL pública de cada landing (`url`) sale del campo `publicUrl` de `cms-deploy.json`. Si no está presente, cae al homepage del repo en GitHub.
 
 ### Persistencia
 
